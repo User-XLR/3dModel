@@ -1,0 +1,127 @@
+/* 批注指示牌样式 - 现代化发光设计 */
+.annotation-indicator {
+  background: transparent;
+  color: #00ffff;
+  padding: 10px 16px;
+  border: 2px solid #00ffff;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.6),
+    0 0 40px rgba(0, 255, 255, 0.3),
+    0 0 60px rgba(0, 255, 255, 0.1),
+    inset 0 0 20px rgba(0, 255, 255, 0.1);
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  min-width: 140px;
+  max-width: 200px;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+}
+
+.annotation-indicator:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 0 30px rgba(0, 255, 255, 0.8),
+    0 0 60px rgba(0, 255, 255, 0.4),
+    0 0 90px rgba(0, 255, 255, 0.2),
+    inset 0 0 30px rgba(0, 255, 255, 0.2);
+  text-shadow: 0 0 15px rgba(0, 255, 255, 1);
+}
+
+.annotation-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(0, 255, 255, 0.2) 50%, transparent 70%);
+  pointer-events: none;
+  border-radius: 12px;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.annotation-indicator .indicator-tag {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #00ffff;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.8);
+}
+
+.annotation-indicator .indicator-name {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.annotation-indicator .indicator-type {
+  font-size: 10px;
+  opacity: 0.9;
+  color: #00cccc;
+  font-style: italic;
+  text-shadow: 0 0 4px rgba(0, 255, 255, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 特殊标注面板样式 */
+.special-annotation-panel {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  border: 2px solid #e74c3c;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+.special-annotation-item {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 8px;
+  margin: 8px 0;
+  padding: 12px;
+  transition: all 0.3s ease;
+}
+
+.special-annotation-item:hover {
+  background: rgba(231, 76, 60, 0.1);
+  border-color: #e74c3c;
+  transform: translateX(5px);
+}
+
+/* 动画效果 */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(231, 76, 60, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(231, 76, 60, 0.6);
+  }
+  100% {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(231, 76, 60, 0.3);
+  }
+}
+
+.annotation-label.pulse {
+  animation: pulse 2s infinite;
+}
