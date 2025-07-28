@@ -83,16 +83,6 @@ export default class PropertyPanel extends Vue {
       attributes.push({ name: "id", value: object.id });
       attributes.push({ name: "uuid", value: object.uuid });
       attributes.push({ name: "type", value: object.constructor.name || object.type });
-
-      // 检查是否有特殊标注信息
-      if (object.userData.specialAnnotation) {
-        const specialInfo = object.userData.specialAnnotation;
-        attributes.push({
-          name: "🔴 特殊标注",
-          value: `Tag: ${specialInfo.tag}, 名称: ${specialInfo.name}, 类型: ${specialInfo.type}`
-        });
-      }
-
       const keys = Object.keys(object.userData);
       if (keys.length > 0) {
         let str = "";

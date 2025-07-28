@@ -30,12 +30,6 @@ npm run lint
 - Orthographic camera
 ![ortho.gif](public/images/snapshots/ortho.gif)
 
-- **批注指示牌功能** - 为 IFC 模型中的特殊对象（Tag: 923456）自动创建批注指示牌
-  - 一条线加一个长方形的简洁设计
-  - 长方形内显示基础信息（Tag值、对象名称、类型）
-  - 动态朝向，始终面向摄像机
-  - 支持动画效果和悬停交互
-
 - Distance measurement
 ![measure_dist.gif](public/images/snapshots/measure_dist.gif)
 
