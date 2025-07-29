@@ -26,6 +26,8 @@ export interface Model {
   edges?: boolean; // if we want to generate and show edges/outline to the modle
   propertyFile?: string;
   visible?: boolean; // default value is true. won't load a model when invisible
+  fileType?: string; // 文件类型，用于确定使用哪个加载器（如 'ifc', 'gltf', 'obj' 等）
+  originalFileName?: string; // 原始文件名，用于显示和类型推断
 }
 
 /**
@@ -44,13 +46,16 @@ export class ProjectManager {
     const baseURL = process.env.BASE_URL;
     const configFile = "config/projects.json";
     return new Promise<Project[]>((resolve, reject) => {
-      axios.get(configFile, { baseURL }).then(res => {
-        const projects = res.data;
-        resolve(projects);
-      }).catch(reason => {
-        console.error(reason);
-        reject(reason);
-      });
+      axios
+        .get(configFile, { baseURL })
+        .then((res) => {
+          const projects = res.data;
+          resolve(projects);
+        })
+        .catch((reason) => {
+          console.error(reason);
+          reject(reason);
+        });
     });
   }
 
@@ -58,25 +63,37 @@ export class ProjectManager {
    * Gets online projects
    * TODO: handle pagging, filter, etc. when there are many projects
    */
-  public static async getCustomProjects(forceRefetch = false): Promise<Project[]> {
-    if (!ProjectManager.customProjects || ProjectManager.customProjects.length < 1 || forceRefetch) {
+  public static async getCustomProjects(
+    forceRefetch = false
+  ): Promise<Project[]> {
+    if (
+      !ProjectManager.customProjects ||
+      ProjectManager.customProjects.length < 1 ||
+      forceRefetch
+    ) {
       // if list is empty or user want to fetch from online, then fetch from online
       try {
         const projects = await getProjects();
         if (!projects) {
           console.warn(`Failed to load online projects: ${projects}`);
+          return [];
         }
-        ProjectManager.customProjects = projects.map((proj: any) => {
-          return {
-            id: proj._id,
-            name: proj.name,
-            models: []
-          };
-        }) || [];
-        console.log(`ProjectManager.customProjects: ${ProjectManager.customProjects}`);
+        ProjectManager.customProjects =
+          projects.map((proj: any) => {
+            return {
+              id: proj._id,
+              name: proj.name,
+              thumbnail: proj.thumbnail || "images/default-thumbnail.jpg",
+              models: proj.models || [],
+            };
+          }) || [];
+        console.log(
+          `ProjectManager.customProjects: ${ProjectManager.customProjects}`
+        );
         return ProjectManager.customProjects;
       } catch (e) {
         console.warn(`Failed to load online projects, error: ${e}`);
+        return [];
       }
     }
     return Promise.resolve(ProjectManager.customProjects);
@@ -87,7 +104,7 @@ export class ProjectManager {
    */
   public static async getProject(id: string): Promise<Project> {
     const projects = await ProjectManager.getCustomProjects();
-    const project = projects ? projects.find(p => p.id === id) : undefined;
+    const project = projects ? projects.find((p) => p.id === id) : undefined;
     if (!project) {
       // TODO: need to get project from backend, because projects are possibly not loaded yet
       throw Error(`Failed to get project with id: ${id}`);
@@ -95,20 +112,24 @@ export class ProjectManager {
     return Promise.resolve(project);
   }
 
-  public static addCustomProject(project: Project): (Project) {
+  public static addCustomProject(project: Project): Project {
     ProjectManager.customProjects.push(project);
     return project;
   }
 
   public static deleteCustomProject(projectId: string) {
-    const index = ProjectManager.customProjects.findIndex(p => p.id === projectId);
+    const index = ProjectManager.customProjects.findIndex(
+      (p) => p.id === projectId
+    );
     index > -1 && ProjectManager.customProjects.splice(index, 1);
   }
 
   /**
    * Converts number array to THREE.Vector3
    */
-  public static arrayToVector3(arr: number[] | THREE.Vector3 | undefined): THREE.Vector3 | undefined {
+  public static arrayToVector3(
+    arr: number[] | THREE.Vector3 | undefined
+  ): THREE.Vector3 | undefined {
     if (!arr) {
       return arr;
     } else if (arr instanceof THREE.Vector3) {
@@ -121,7 +142,9 @@ export class ProjectManager {
   /**
    * Converts number array to THREE.Euler
    */
-  public static arrayToEuler(arr: number[] | THREE.Euler | undefined): THREE.Euler | undefined {
+  public static arrayToEuler(
+    arr: number[] | THREE.Euler | undefined
+  ): THREE.Euler | undefined {
     if (!arr) {
       return arr;
     } else if (arr instanceof THREE.Euler) {

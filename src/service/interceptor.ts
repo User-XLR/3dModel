@@ -25,25 +25,26 @@ export const errorHandler = (error: any) => {
   const { response, code, message } = error;
   if (response) {
     const { status } = response;
-    const { error } = response.data;
+    const responseData = response.data;
+    const errorData = responseData && responseData.error;
     switch (status) {
     // 404 not found
       case 404:
-        pushErrorMessage((error && error.errorMsg) || "Not found", status);
+        pushErrorMessage((errorData && errorData.errorMsg) || "Not found", status);
         break;
       case 500:
-        pushErrorMessage((error && error.errorMsg) || "Server internal error", status);
+        pushErrorMessage((errorData && errorData.errorMsg) || "Server internal error", status);
         break;
       default:
-        if (error.errorMsg) {
-          pushErrorMessage(error.errorMsg, error.code);
+        if (errorData && errorData.errorMsg) {
+          pushErrorMessage(errorData.errorMsg, errorData.code);
         }
     }
   } else {
-    if (code === "ECONNABORTED" && message.indexOf("timeout") > -1) {
+    if (code === "ECONNABORTED" && message && message.indexOf("timeout") > -1) {
       pushErrorMessage("Request timeout", code);
     } else {
-      pushErrorMessage(message);
+      pushErrorMessage(message || "未知错误");
     }
   }
 };
@@ -52,7 +53,11 @@ export const errorHandler = (error: any) => {
  * General response handler
 */
 export function responseHandler(response: any) {
-  const { code, msg } = response.data;
+  const responseData = response && response.data;
+  if (!responseData) {
+    return response;
+  }
+  const { code, msg } = responseData;
   switch (code) {
   // TODO: enum
   // case 0:

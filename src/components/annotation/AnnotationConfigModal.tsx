@@ -59,7 +59,9 @@ export default class AnnotationConfigModal extends Vue {
 
   private handleConfirm() {
     if (!this.formData.title.trim()) {
-      this.$message.warning("请输入标题");
+      if (this.$message && this.$message.warning) {
+        this.$message.warning("请输入标题");
+      }
       return;
     }
     this.confirm(this.formData);

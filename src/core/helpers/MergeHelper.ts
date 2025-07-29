@@ -99,19 +99,36 @@ export default class MergeHelper {
         }
       });
       if (geometries.length > 0) {
-        const mergedBufferGeometry = mergeGeometries(geometries);
-        geometries.forEach((geom: THREE.BufferGeometry) => geom.dispose()); // dispose as soon as posibble
-        geometries = [];
-        const mergedMesh = new THREE.Mesh(mergedBufferGeometry, firstObj.material);
-        mergedMesh.name = `[Merged] ${firstObj.name}`; // for now, used the first object's name
-        mergedMesh.userData.selectable = false; // set selectable to false because it doesn't make sense to select merged object
-        mergedMesh.matrixAutoUpdate = matrixAutoUpdate;
-        if (!matrixAutoUpdate) {
-          mergedMesh.updateMatrix();
+        // 添加安全检查：确保几何体数组中的元素都是有效的
+        const validGeometries = geometries.filter(geom =>
+          geom &&
+          geom.attributes &&
+          Object.keys(geom.attributes).length > 0 &&
+          geom.attributes.position &&
+          geom.attributes.position.count > 0
+        );
+        if (validGeometries.length > 1) { // 至少需要2个几何体才有意义合并
+          try {
+            const mergedBufferGeometry = mergeGeometries(validGeometries);
+            if (mergedBufferGeometry) {
+              geometries.forEach((geom: THREE.BufferGeometry) => geom.dispose()); // dispose as soon as posibble
+              geometries = [];
+              const mergedMesh = new THREE.Mesh(mergedBufferGeometry, firstObj.material);
+              mergedMesh.name = `[Merged] ${firstObj.name}`; // for now, used the first object's name
+              mergedMesh.userData.selectable = false; // set selectable to false because it doesn't make sense to select merged object
+              mergedMesh.matrixAutoUpdate = matrixAutoUpdate;
+              if (!matrixAutoUpdate) {
+                mergedMesh.updateMatrix();
+              }
+              mergedMesh.updateMatrixWorld(true);
+              mergedMesh.updateWorldMatrix(true, true);
+              mergedMeshes.push(mergedMesh);
+            }
+          } catch (error) {
+            console.warn('[Merge] Failed to merge geometries:', error);
+            // 如果合并失败，继续使用原始几何体
+          }
         }
-        mergedMesh.updateMatrixWorld(true);
-        mergedMesh.updateWorldMatrix(true, true);
-        mergedMeshes.push(mergedMesh);
       }
     });
 
@@ -219,22 +236,42 @@ export default class MergeHelper {
         const geom = applyMatrix((obj as THREE.Mesh).geometry.clone(), obj); // need to clone geometry, bacause a geometry can be shared by many objects
         geometries.push(geom);
       }
-      const geom = mergeGeometries(geometries);
-      geometries.forEach((geom: THREE.BufferGeometry) => geom.dispose()); // dispose as soon as posibble
-      geometries = [];
-      if (geom) {
-        const mergedMesh = new THREE.Mesh(geom, value.material);
-        mergedMesh.name = `[Merged] ${value.material.name}`; // for now, used the first object's name
-        mergedMesh.userData.selectable = false; // set selectable to false because it doesn't make sense to select merged object
-        mergedMesh.matrixAutoUpdate = matrixAutoUpdate;
-        if (!matrixAutoUpdate) {
-          mergedMesh.updateMatrix();
+      // 添加安全检查：确保几何体数组不为空且包含有效几何体
+      const validGeometries = geometries.filter(geom =>
+        geom &&
+        geom.attributes &&
+        Object.keys(geom.attributes).length > 0 &&
+        geom.attributes.position &&
+        geom.attributes.position.count > 0
+      );
+      if (validGeometries.length > 1) { // 至少需要2个几何体才有意义合并
+        try {
+          const geom = mergeGeometries(validGeometries);
+          geometries.forEach((geom: THREE.BufferGeometry) => geom.dispose()); // dispose as soon as posibble
+          geometries = [];
+          if (geom) {
+            const mergedMesh = new THREE.Mesh(geom, value.material);
+            mergedMesh.name = `[Merged] ${value.material.name}`; // for now, used the first object's name
+            mergedMesh.userData.selectable = false; // set selectable to false because it doesn't make sense to select merged object
+            mergedMesh.matrixAutoUpdate = matrixAutoUpdate;
+            if (!matrixAutoUpdate) {
+              mergedMesh.updateMatrix();
+            }
+            mergedMesh.parent = group;
+            group.children.push(mergedMesh);
+          } else {
+            // It could fail to merge because of InterleavedBufferAttributes, position, etc.
+            // In this case, cleanup the ids, so it won't remove these objects
+            value.objects = [];
+          }
+        } catch (error) {
+          console.warn('[Merge] Failed to merge geometries in deepMerge:', error);
+          // 如果合并失败，清空对象数组避免错误
+          value.objects = [];
         }
-        mergedMesh.parent = group;
-        group.children.push(mergedMesh);
       } else {
-        // It could fail to merge because of InterleavedBufferAttributes, position, etc.
-        // In this case, cleanup the ids, so it won't remove these objects
+        // 如果没有足够的有效几何体进行合并，清空对象数组避免错误
+        console.warn('[Merge] Not enough valid geometries to merge in deepMerge, count:', validGeometries.length);
         value.objects = [];
       }
     }

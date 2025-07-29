@@ -6,7 +6,7 @@ import { ProjectManager, Project, Model } from "@/core/ProjectManager";
 import {
   Settings as SettingsType,
   defaultSettings,
-  settingStoreKeyName
+  settingStoreKeyName,
 } from "@/components/projectSettingsPanel/ProjectSettingsDef";
 import { Types } from "@/store/index";
 import { VNode } from "vue/types/umd";
@@ -22,7 +22,7 @@ import SnapshotPanel from "../snapshot/SnapshotPanel";
 import styles from "./Viewer3DContainer.module.scss";
 import Viewer3D from "@/core/Viewer3D";
 import AnnotationConfigModal, {
-  AnnotationConfig
+  AnnotationConfig,
 } from "@/components/annotation/AnnotationConfigModal";
 
 export interface Viewer3DContainerProps {
@@ -56,7 +56,7 @@ export default class Viewer3DContainer extends Vue {
     description: "",
     type: "info",
     priority: 1,
-    color: "#409EFF"
+    color: "#409EFF",
   };
 
   clickedObject?: THREE.Object3D;
@@ -75,15 +75,16 @@ export default class Viewer3DContainer extends Vue {
     this.viewer = viewer;
     if (viewer.renderer) {
       viewerContainer.appendChild(viewer.renderer.domElement);
+
+      // 先尝试从示例项目中查找
       ProjectManager.getSampleProjects().then((projects) => {
         const proj = projects.find((p: Project) => p.id === this.projectId);
         if (proj) {
           this.$store.commit(Types.MUTATION_ACTIVE_PROJECT, proj);
           this.loadSampleProjectModels(viewer, proj);
         } else {
-          Message.error(
-            `Failed to find project for projectId: ${this.projectId}`
-          );
+          // 如果示例项目中没找到，尝试从用户项目中查找
+          this.loadCustomProject(viewer);
         }
       });
     }
@@ -118,6 +119,66 @@ export default class Viewer3DContainer extends Vue {
 
     // 初始化注释功能
     this.initAnnotationFeature(viewer, viewerContainer);
+  }
+
+  async loadCustomProject(viewer: Viewer3D) {
+    try {
+      const customProjects = await ProjectManager.getCustomProjects();
+      const proj = customProjects.find((p: Project) => p.id === this.projectId);
+      if (proj) {
+        this.$store.commit(Types.MUTATION_ACTIVE_PROJECT, proj);
+        this.loadCustomProjectModels(viewer, proj);
+      } else {
+        Message.error(
+          `Failed to find project for projectId: ${this.projectId}`
+        );
+      }
+    } catch (error: any) {
+      const errorMessage = error && error.message ? error.message : "未知错误";
+      Message.error(`Failed to load project: ${errorMessage}`);
+    }
+  }
+
+  loadCustomProjectModels(viewer: Viewer3D, proj: Project) {
+    if (!viewer || !proj) {
+      console.log("[VC] Failed to load a project!");
+      return;
+    }
+    if (!proj.models || proj.models.length < 1) {
+      console.log("[VC] No models to load!");
+      Message.warning("该项目暂无模型文件");
+      return;
+    }
+    this.onLoading = false;
+    this.loadingProgress = 0;
+    let counter = 0; // to indicate how many models are loading
+    for (let i = 0; i < proj.models.length; ++i) {
+      const model = proj.models[i];
+      if (model.visible === false) {
+        continue; // skip when visible is false
+      }
+      counter++;
+      this.onLoading = true;
+      viewer
+        .loadModel(
+          model,
+          (event) => {
+            this.loadingText = `${proj.name}(${i + 1}/${proj.models.length})`;
+            this.loadingProgress = Math.floor(
+              (event.loaded * 100) / event.total
+            );
+          },
+          (event) => {
+            const errorMessage =
+              event && event.message ? event.message : "未知错误";
+            Message.error("Failed to load " + model.src + ". " + errorMessage);
+            this.onLoading = --counter > 0;
+          }
+        )
+        .then(() => {
+          this.onLoading = --counter > 0;
+        });
+    }
   }
 
   initStats(viewer: Viewer3D) {
@@ -195,7 +256,9 @@ export default class Viewer3DContainer extends Vue {
             );
           },
           (event) => {
-            Message.error("Failed to load " + model.src + ". " + event.message);
+            const errorMessage =
+              event && event.message ? event.message : "未知错误";
+            Message.error("Failed to load " + model.src + ". " + errorMessage);
             this.onLoading = --counter > 0;
           }
         )
@@ -280,16 +343,43 @@ export default class Viewer3DContainer extends Vue {
         return;
       }
       const file = files[0];
-      // const url = URL.createObjectURL(file);
+      // 为用户上传的文件创建Blob URL，这样Three.js加载器才能正确加载
+      const url = URL.createObjectURL(file);
       this.onLoading = true;
+
+      // 从文件名提取文件类型
+      const fileName = file.name.toLowerCase();
+      let fileType = "gltf"; // 默认
+      if (fileName.endsWith(".ifc")) {
+        fileType = "ifc";
+      } else if (fileName.endsWith(".fbx")) {
+        fileType = "fbx";
+      } else if (fileName.endsWith(".obj")) {
+        fileType = "obj";
+      } else if (fileName.endsWith(".dae")) {
+        fileType = "dae";
+      } else if (fileName.endsWith(".stl")) {
+        fileType = "stl";
+      } else if (fileName.endsWith(".gltf") || fileName.endsWith(".glb")) {
+        fileType = "gltf";
+      }
+
       const options: Model = {
-        src: file.name,
+        src: url, // 使用Blob URL而不是文件名
+        fileType: fileType, // 指定文件类型
+        originalFileName: file.name, // 保存原始文件名
+        name: file.name,
         position: [0, 0, 0],
         rotation: [0, 0, 0],
         scale: [1, 1, 1],
         instantiate: false,
-        merge: false
+        merge: false,
       };
+
+      console.log(
+        `[UploadModel] File: ${file.name}, Type: ${fileType}, URL: ${url}`
+      );
+
       viewer &&
         viewer
           .loadLocalModel(
@@ -301,14 +391,20 @@ export default class Viewer3DContainer extends Vue {
               );
             },
             (event) => {
+              const errorMessage =
+                event && event.message ? event.message : "未知错误";
               Message.error(
-                "Failed to load " + file.name + ". " + event.message
+                "Failed to load " + file.name + ". " + errorMessage
               );
               this.onLoading = false;
+              // 加载失败时释放Blob URL内存
+              URL.revokeObjectURL(url);
             }
           )
           .then(() => {
             this.onLoading = false;
+            // 加载成功后也可以释放Blob URL内存（可选，根据需要保留）
+            // URL.revokeObjectURL(url);
           });
     };
   }
@@ -351,7 +447,7 @@ export default class Viewer3DContainer extends Vue {
           on={{
             "update:visible": (val: boolean) => {
               this.toggleProjectSettingPanel(val);
-            }
+            },
           }}
         >
           <ProjectSettingsPanel
@@ -359,7 +455,7 @@ export default class Viewer3DContainer extends Vue {
             on={{
               "update:visible": (val: boolean) => {
                 this.toggleProjectSettingPanel(val);
-              }
+              },
             }}
             viewer={this.viewer}
           ></ProjectSettingsPanel>
@@ -372,7 +468,7 @@ export default class Viewer3DContainer extends Vue {
           config={this.annotationConfig}
           on={{
             confirm: this.handleAnnotationConfirm,
-            cancel: this.handleAnnotationCancel
+            cancel: this.handleAnnotationCancel,
           }}
         />
       </div>

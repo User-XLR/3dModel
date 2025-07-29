@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer";
 import {
   Collada,
-  ColladaLoader
+  ColladaLoader,
 } from "three/examples/jsm/loaders/ColladaLoader";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
@@ -35,13 +35,13 @@ import {
   OrthographicCamera,
   PerspectiveCamera,
   Raycaster,
-  Vector3
+  Vector3,
 } from "three";
 import { MaterialInfo, ObjectUtils } from "./utils/ObjectUtils";
 import {
   Settings as SettingsType,
   defaultSettings,
-  CameraSettings
+  CameraSettings,
 } from "@/components/projectSettingsPanel/ProjectSettingsDef";
 import { PostmateManager } from "./postmate/PostmateManager";
 import { BooleanMessageData, MessageId } from "./postmate/Message";
@@ -179,7 +179,7 @@ export default class Viewer3D {
   private initRenderer() {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
-      preserveDrawingBuffer: true
+      preserveDrawingBuffer: true,
     });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(this.width, this.height);
@@ -245,7 +245,7 @@ export default class Viewer3D {
       LEFT: "KeyA", // left arrow
       UP: "Space", // up arrow
       RIGHT: "KeyD", // right arrow
-      BOTTOM: "ControlLeft" // down arrow
+      BOTTOM: "ControlLeft", // down arrow
     };
     controls.listenToKeyEvents(document.body);
     controls.update();
@@ -491,7 +491,7 @@ export default class Viewer3D {
         this.scene.add(this.groundGrid);
       }
       if (ctrl.showGrassGround) {
-        (async() => {
+        (async () => {
           this.grassGround = await GroundUtils.createGrassGround();
           this.scene && this.scene.add(this.grassGround);
           this.enableRender();
@@ -660,8 +660,8 @@ export default class Viewer3D {
                       model.userData.userConfigVisibility = true;
                     }
                   },
-                  get: () => model.userData._visible
-                }
+                  get: () => model.userData._visible,
+                },
               });
             }
             if (typeof model.userData.userConfigVisibility === "undefined") {
@@ -790,21 +790,52 @@ export default class Viewer3D {
     onError?: (event: ErrorEvent) => void
   ): Promise<THREE.Object3D> {
     const url = options.src;
-    const fileName = options.src.toLowerCase();
-    if (fileName.endsWith("fbx")) {
-      return this.loadFbx(url, options, onProgress, onError);
-    } else if (fileName.endsWith("obj")) {
-      return this.loadObj(url, options, onProgress, onError);
-    } else if (fileName.endsWith("stl")) {
-      return this.loadStl(url, options, onProgress, onError);
-    } else if (fileName.endsWith("ifc")) {
-      return this.loadIfc(url, options, onProgress, onError);
-    } else if (fileName.endsWith("shp")) {
-      return this.loadShp(url, options, onProgress, onError);
-    } else if (fileName.endsWith("dae")) {
-      return this.loadDae(url, options, onProgress, onError);
-    } else {
-      return this.loadGltf(url, options, onProgress, onError);
+
+    // 优先使用fileType字段确定文件类型，如果没有则使用文件名推断
+    let fileType = options.fileType?.toLowerCase();
+    if (!fileType) {
+      // 如果有originalFileName则使用它，否则使用src
+      const fileName = (options.originalFileName || options.src).toLowerCase();
+      if (fileName.endsWith(".fbx")) {
+        fileType = "fbx";
+      } else if (fileName.endsWith(".obj")) {
+        fileType = "obj";
+      } else if (fileName.endsWith(".stl")) {
+        fileType = "stl";
+      } else if (fileName.endsWith(".ifc")) {
+        fileType = "ifc";
+      } else if (fileName.endsWith(".shp")) {
+        fileType = "shp";
+      } else if (fileName.endsWith(".dae")) {
+        fileType = "dae";
+      } else if (fileName.endsWith(".gltf") || fileName.endsWith(".glb")) {
+        fileType = "gltf";
+      } else {
+        fileType = "gltf"; // 默认
+      }
+    }
+
+    console.log(
+      `[Viewer3D] Loading model with fileType: ${fileType}, src: ${url}`
+    );
+
+    switch (fileType) {
+      case "fbx":
+        return this.loadFbx(url, options, onProgress, onError);
+      case "obj":
+        return this.loadObj(url, options, onProgress, onError);
+      case "stl":
+        return this.loadStl(url, options, onProgress, onError);
+      case "ifc":
+        return this.loadIfc(url, options, onProgress, onError);
+      case "shp":
+        return this.loadShp(url, options, onProgress, onError);
+      case "dae":
+        return this.loadDae(url, options, onProgress, onError);
+      case "gltf":
+      case "glb":
+      default:
+        return this.loadGltf(url, options, onProgress, onError);
     }
   }
 
@@ -813,21 +844,53 @@ export default class Viewer3D {
     onProgress?: (event: ProgressEvent) => void,
     onError?: (event: ErrorEvent) => void
   ): Promise<THREE.Object3D> {
-    const url = options.src.toLowerCase();
-    if (url.endsWith("fbx")) {
-      return this.loadFbx(url, options, onProgress, onError);
-    } else if (url.endsWith("obj")) {
-      return this.loadObj(url, options, onProgress, onError);
-    } else if (url.endsWith("stl")) {
-      return this.loadStl(url, options, onProgress, onError);
-    } else if (url.endsWith("ifc")) {
-      return this.loadIfc(url, options, onProgress, onError);
-    } else if (url.endsWith("shp")) {
-      return this.loadShp(url, options, onProgress, onError);
-    } else if (url.endsWith("dae")) {
-      return this.loadDae(url, options, onProgress, onError);
-    } else {
-      return this.loadGltf(url, options, onProgress, onError);
+    const url = options.src;
+
+    // 优先使用fileType字段确定文件类型，如果没有则使用文件名推断
+    let fileType = options.fileType?.toLowerCase();
+    if (!fileType) {
+      // 如果有originalFileName则使用它，否则使用src
+      const fileName = (options.originalFileName || options.src).toLowerCase();
+      if (fileName.endsWith(".fbx")) {
+        fileType = "fbx";
+      } else if (fileName.endsWith(".obj")) {
+        fileType = "obj";
+      } else if (fileName.endsWith(".stl")) {
+        fileType = "stl";
+      } else if (fileName.endsWith(".ifc")) {
+        fileType = "ifc";
+      } else if (fileName.endsWith(".shp")) {
+        fileType = "shp";
+      } else if (fileName.endsWith(".dae")) {
+        fileType = "dae";
+      } else if (fileName.endsWith(".gltf") || fileName.endsWith(".glb")) {
+        fileType = "gltf";
+      } else {
+        fileType = "gltf"; // 默认
+      }
+    }
+
+    console.log(
+      `[Viewer3D] Loading remote model with fileType: ${fileType}, src: ${url}`
+    );
+
+    switch (fileType) {
+      case "fbx":
+        return this.loadFbx(url, options, onProgress, onError);
+      case "obj":
+        return this.loadObj(url, options, onProgress, onError);
+      case "stl":
+        return this.loadStl(url, options, onProgress, onError);
+      case "ifc":
+        return this.loadIfc(url, options, onProgress, onError);
+      case "shp":
+        return this.loadShp(url, options, onProgress, onError);
+      case "dae":
+        return this.loadDae(url, options, onProgress, onError);
+      case "gltf":
+      case "glb":
+      default:
+        return this.loadGltf(url, options, onProgress, onError);
     }
   }
 
@@ -845,12 +908,24 @@ export default class Viewer3D {
       loader.load(
         url.replace(/#/g, encodeURIComponent("#")),
         (gltf) => {
+          // 添加安全检查：确保gltf和gltf.scene存在
+          if (!gltf || !gltf.scene) {
+            const error = new Error(
+              `Failed to load GLTF: Invalid or empty scene from ${url}`
+            );
+            console.error("[Viewer3D] GLTF loading error:", error);
+            onError && onError(error as any);
+            reject(error);
+            return;
+          }
+
           const object = gltf.scene;
           this.applyOptionsAndAddToScene(url, object, options);
           resolve(object);
         },
         onProgress,
         (event) => {
+          console.error("[Viewer3D] GLTF loading failed:", event);
           onError && onError(event);
           reject(event);
         }
@@ -892,22 +967,68 @@ export default class Viewer3D {
     // for now, assume mtl is under the same folder (TODO: refine it later)
     const mtlUrl = url.replace(".obj", ".mtl");
     return new Promise<THREE.Object3D>((resolve, reject) => {
-      mtlLoader.load(mtlUrl, (material) => {
-        material.preload();
-        loader.setMaterials(material);
-        loader.load(
-          url,
-          (object) => {
-            this.applyOptionsAndAddToScene(url, object, options);
-            resolve(object);
-          },
-          onProgress,
-          (event) => {
-            onError && onError(event);
-            reject(event);
-          }
-        );
-      });
+      mtlLoader.load(
+        mtlUrl,
+        (material) => {
+          material.preload();
+          loader.setMaterials(material);
+          loader.load(
+            url,
+            (object) => {
+              // 添加安全检查：确保object存在且有效
+              if (!object) {
+                const error = new Error(
+                  `Failed to load OBJ: Invalid or empty object from ${url}`
+                );
+                console.error("[Viewer3D] OBJ loading error:", error);
+                onError && onError(error as any);
+                reject(error);
+                return;
+              }
+
+              this.applyOptionsAndAddToScene(url, object, options);
+              resolve(object);
+            },
+            onProgress,
+            (event) => {
+              console.error("[Viewer3D] OBJ loading failed:", event);
+              onError && onError(event);
+              reject(event);
+            }
+          );
+        },
+        undefined, // onProgress for MTL
+        (event) => {
+          // MTL文件加载失败时，尝试直接加载OBJ文件
+          console.warn(
+            "[Viewer3D] MTL loading failed, trying to load OBJ without materials:",
+            event
+          );
+          loader.load(
+            url,
+            (object) => {
+              if (!object) {
+                const error = new Error(
+                  `Failed to load OBJ: Invalid or empty object from ${url}`
+                );
+                console.error("[Viewer3D] OBJ loading error:", error);
+                onError && onError(error as any);
+                reject(error);
+                return;
+              }
+
+              this.applyOptionsAndAddToScene(url, object, options);
+              resolve(object);
+            },
+            onProgress,
+            (event) => {
+              console.error("[Viewer3D] OBJ loading failed:", event);
+              onError && onError(event);
+              reject(event);
+            }
+          );
+        }
+      );
     });
   }
 
@@ -922,8 +1043,25 @@ export default class Viewer3D {
       loader.load(
         url,
         (geometry: THREE.BufferGeometry) => {
+          // 添加安全检查：确保geometry存在且有效
+          if (
+            !geometry ||
+            !geometry.attributes ||
+            !geometry.attributes.position
+          ) {
+            const error = new Error(
+              `Failed to load STL: Invalid or empty geometry from ${url}`
+            );
+            console.error("[Viewer3D] STL loading error:", error);
+            onError && onError(error as any);
+            reject(error);
+            return;
+          }
+
           const object = new THREE.Mesh(geometry);
-          if (options.src) {
+          if (options.originalFileName) {
+            object.name = options.originalFileName;
+          } else if (options.src) {
             object.name = options.src;
           } else {
             const i = url.lastIndexOf("/");
@@ -931,11 +1069,13 @@ export default class Viewer3D {
               object.name = url.substr(i + 1);
             }
           }
+          console.log("[Viewer3D] STL model loaded successfully:", object);
           this.applyOptionsAndAddToScene(url, object, options);
           resolve(object);
         },
         onProgress,
         (event) => {
+          console.error("[Viewer3D] STL loading failed:", event);
           onError && onError(event);
           reject(event);
         }
@@ -972,11 +1112,24 @@ export default class Viewer3D {
       loader.load(
         url,
         (ifcModel: any) => {
+          // 添加安全检查：确保ifcModel和ifcModel.mesh存在
+          if (!ifcModel || !ifcModel.mesh) {
+            const error = new Error(
+              `Failed to load IFC: Invalid or empty model from ${url}`
+            );
+            console.error("[Viewer3D] IFC loading error:", error);
+            onError && onError(error as any);
+            reject(error);
+            return;
+          }
+
+          console.log("[Viewer3D] IFC model loaded successfully:", ifcModel);
           this.applyOptionsAndAddToScene(url, ifcModel.mesh, options);
           resolve(ifcModel.mesh);
         },
         onProgress,
         (event: any) => {
+          console.error("[Viewer3D] IFC loading failed:", event);
           onError && onError(event);
           reject(event);
         }
@@ -1024,18 +1177,24 @@ export default class Viewer3D {
       loader.load(
         url,
         (collada: Collada) => {
-          if (!collada) {
-            const event = new ErrorEvent("");
-            onError && onError(event);
-            reject(event);
-          } else {
-            const object = collada.scene;
-            this.applyOptionsAndAddToScene(url, object, options);
-            resolve(object);
+          // 添加更严格的安全检查
+          if (!collada || !collada.scene) {
+            const error = new Error(
+              `Failed to load DAE: Invalid or empty collada scene from ${url}`
+            );
+            console.error("[Viewer3D] DAE loading error:", error);
+            onError && onError(error as any);
+            reject(error);
+            return;
           }
+
+          const object = collada.scene;
+          this.applyOptionsAndAddToScene(url, object, options);
+          resolve(object);
         },
         onProgress,
         (event) => {
+          console.error("[Viewer3D] DAE loading failed:", event);
           onError && onError(event);
           reject(event);
         }
@@ -1086,42 +1245,88 @@ export default class Viewer3D {
     object: THREE.Object3D,
     options: Model
   ) {
-    const position = options.position || [0, 0, 0];
-    const rotation = options.rotation || [0, 0, 0];
-    const scale = options.scale || [1, 1, 1];
-    const instantiate = options.instantiate;
-    const merge = options.merge;
-    object.position.set(position[0], position[1], position[2]);
-    object.rotation.set(
-      (rotation[0] * Math.PI) / 180.0,
-      (rotation[1] * Math.PI) / 180.0,
-      (rotation[2] * Math.PI) / 180.0
-    );
-    object.scale.set(scale[0], scale[1], scale[2]);
-    if (instantiate) {
-      // load and display first, then do instantiation
-      setTimeout(() => {
-        this.instantiate(object);
-        // If we do instantiate, better to goToHomeView() and regenSky() after instantiate is done,
-        // otherwise, the bounding box could be wrong.
-        // This makes loading take longer time, since we add to scene after instantiate!
+    // 添加安全检查：确保object和options存在
+    if (!object || !options) {
+      console.error(
+        "[Viewer3D] applyOptionsAndAddToScene: Invalid object or options"
+      );
+      return;
+    }
+
+    try {
+      const position = options.position || [0, 0, 0];
+      const rotation = options.rotation || [0, 0, 0];
+      const scale = options.scale || [1, 1, 1];
+      const instantiate = options.instantiate;
+      const merge = options.merge;
+
+      object.position.set(position[0], position[1], position[2]);
+      object.rotation.set(
+        (rotation[0] * Math.PI) / 180.0,
+        (rotation[1] * Math.PI) / 180.0,
+        (rotation[2] * Math.PI) / 180.0
+      );
+      object.scale.set(scale[0], scale[1], scale[2]);
+
+      if (instantiate) {
+        // load and display first, then do instantiation
         setTimeout(() => {
-          if (merge) {
-            this.merge(object);
+          try {
+            this.instantiate(object);
+            // If we do instantiate, better to goToHomeView() and regenSky() after instantiate is done,
+            // otherwise, the bounding box could be wrong.
+            // This makes loading take longer time, since we add to scene after instantiate!
+            setTimeout(() => {
+              if (merge) {
+                try {
+                  this.merge(object);
+                } catch (mergeError) {
+                  console.warn(
+                    "[Viewer3D] Merge failed, continuing without merge:",
+                    mergeError
+                  );
+                }
+              }
+              this.addLoadedModelToScene(object, options);
+            }, 0);
+          } catch (instantiateError) {
+            console.warn(
+              "[Viewer3D] Instantiate failed, adding model directly:",
+              instantiateError
+            );
+            this.addLoadedModelToScene(object, options);
           }
-          this.addLoadedModelToScene(object, options);
         }, 0);
-      }, 0);
-    } else if (merge) {
-      setTimeout(() => {
-        this.merge(object);
-        // If we do instantiate, better to goToHomeView() and regenSky() after instantiate is done,
-        // otherwise, the bounding box could be wrong.
-        // This makes loading take longer time, since we add to scene after instantiate!
-        setTimeout(() => this.addLoadedModelToScene(object, options), 0);
-      }, 0);
-    } else {
-      this.addLoadedModelToScene(object, options);
+      } else if (merge) {
+        setTimeout(() => {
+          try {
+            this.merge(object);
+            // If we do instantiate, better to goToHomeView() and regenSky() after instantiate is done,
+            // otherwise, the bounding box could be wrong.
+            // This makes loading take longer time, since we add to scene after instantiate!
+            setTimeout(() => this.addLoadedModelToScene(object, options), 0);
+          } catch (mergeError) {
+            console.warn(
+              "[Viewer3D] Merge failed, adding model directly:",
+              mergeError
+            );
+            this.addLoadedModelToScene(object, options);
+          }
+        }, 0);
+      } else {
+        this.addLoadedModelToScene(object, options);
+      }
+    } catch (error) {
+      console.error("[Viewer3D] Error in applyOptionsAndAddToScene:", error);
+      // 即使出错也尝试直接添加到场景
+      try {
+        this.addLoadedModelToScene(object, options);
+      } catch (fallbackError) {
+        console.error(
+          "[Viewer3D] Fallback addLoadedModelToScene also failed:",
+          fallbackError
+        );
+      }
     }
   }
 
@@ -1185,7 +1390,7 @@ export default class Viewer3D {
 
     this.loadedModels[options.src] = {
       uuid: object.uuid,
-      bbox
+      bbox,
     };
     const modelUuids = Object.values(this.loadedModels).map((obj) => obj.uuid);
     const isFirstModel = !modelUuids || modelUuids.length <= 1;
@@ -1327,7 +1532,7 @@ export default class Viewer3D {
     const {
       depthTest = undefined,
       highlightColor = new THREE.Color(0xff00ff),
-      opacity = 0.7
+      opacity = 0.7,
     } = options;
     // change highlight color here is we don't like it
     // the original mererial may be used by many objects, we cannot change the original one, thus need to clone
@@ -1481,7 +1686,7 @@ export default class Viewer3D {
     color: 0xff00ff,
     depthTest: false,
     transparent: true,
-    opacity: 0.3
+    opacity: 0.3,
   });
 
   /**
@@ -1589,7 +1794,7 @@ export default class Viewer3D {
       // While, it sounds like only support MeshPhongMaterial. So here, we'll clone
       // a mesh with highlighted color to replace the original instance in InstancedMesh
       const clonedMaterial = this.clonedHighlightMaterials(object, {
-        depthTest
+        depthTest,
       });
       if (clonedMaterial) {
         // clone a new mesh for the selected instance
@@ -1624,7 +1829,7 @@ export default class Viewer3D {
             ids: [id],
             scene,
             removePrevious: true,
-            material: this.ifcHighlightMaterial
+            material: this.ifcHighlightMaterial,
           };
           const subset = ifcManager.createSubset(cfg) as THREE.Object3D;
           if (subset) {
@@ -2300,14 +2505,14 @@ export default class Viewer3D {
     if (propertyName in this) {
       let old = this[propertyName];
       Object.defineProperty(this, propertyName, {
-        set: function(val) {
+        set: function (val) {
           const o = old;
           old = val;
           callback(val, o, this);
         },
-        get: function() {
+        get: function () {
           return old;
-        }
+        },
       });
     }
   };
