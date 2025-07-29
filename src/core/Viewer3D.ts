@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer";
-import { Collada, ColladaLoader } from "three/examples/jsm/loaders/ColladaLoader";
+import {
+  Collada,
+  ColladaLoader
+} from "three/examples/jsm/loaders/ColladaLoader";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
@@ -22,9 +25,24 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass";
 import { ObjectsBoxSection } from "./section/ObjectsBoxSection";
 import { ObjectsPlaneSection } from "./section/ObjectsPlaneSection";
-import { LineBasicMaterial, Material, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, MeshStandardMaterial, OrthographicCamera, PerspectiveCamera, Raycaster, Vector3 } from "three";
+import {
+  LineBasicMaterial,
+  Material,
+  MeshBasicMaterial,
+  MeshLambertMaterial,
+  MeshPhongMaterial,
+  MeshStandardMaterial,
+  OrthographicCamera,
+  PerspectiveCamera,
+  Raycaster,
+  Vector3
+} from "three";
 import { MaterialInfo, ObjectUtils } from "./utils/ObjectUtils";
-import { Settings as SettingsType, defaultSettings, CameraSettings } from "@/components/projectSettingsPanel/ProjectSettingsDef";
+import {
+  Settings as SettingsType,
+  defaultSettings,
+  CameraSettings
+} from "@/components/projectSettingsPanel/ProjectSettingsDef";
 import { PostmateManager } from "./postmate/PostmateManager";
 import { BooleanMessageData, MessageId } from "./postmate/Message";
 import { SHPLoader } from "./shp-js/SHPLoader";
@@ -44,8 +62,9 @@ import SkyboxUtils from "./utils/SkyboxUtils";
 import store from "../store/index";
 import Viewer3DUtils, { Views } from "./utils/Viewer3DUtils";
 import { PmremUtils } from "./utils/PmremUtils";
+import AnnotationManager from "./annotation/AnnotationManager";
 // eslint-disable-next-line
-const TWEEN = require('tween')
+const TWEEN = require("tween");
 const IFC = require("../../public/three/js/libs/ifc/IFCLoader.js");
 
 const decoderPath = "three/js/libs/draco/gltf/";
@@ -64,8 +83,10 @@ export default class Viewer3D {
   sceneBackgroundColor: THREE.Color = new THREE.Color(0xebf2f7); // TODO: add it to settings
   skyOfGradientRamp?: THREE.Mesh;
   stats?: Stats;
-  loadedModels: { [src: string]: { uuid: string, bbox?: THREE.BoxHelper } } = {}; // a map to store model file and uuid
-  [propertyName: string]: any // any property name
+  loadedModels: { [src: string]: { uuid: string; bbox?: THREE.BoxHelper } } =
+    {}; // a map to store model file and uuid
+
+  [propertyName: string]: any; // any property name
   private perspectiveCamera?: THREE.PerspectiveCamera;
   private orthoCamera?: THREE.OrthographicCamera;
   private perspectiveCameraControls?: OrbitControls;
@@ -94,7 +115,17 @@ export default class Viewer3D {
   private gltfLoader?: GLTFLoader;
   private ifcLoader?: any; // IFCLoader;
   private webcam?: WebCam;
+
   private webcamPlane?: THREE.Mesh;
+
+  private annotationManager?: AnnotationManager;
+
+  private annotationCallback?: (
+    object: THREE.Object3D,
+    position: THREE.Vector3,
+    event: MouseEvent
+  ) => void;
+
   // RafHelper (requestAnimationFrame Helper) is used to improve render performance,
   // With this feature, it only renders when necessary, e.g. camera position changed, model loaded, etc.
   // We can disable this feature by assigning raf to undefined
@@ -103,11 +134,15 @@ export default class Viewer3D {
   private timeoutSymbol?: symbol; // used together with RafHelper
   private isFrustumInsectChecking = false;
   // store events so that they can be removed before destroy
-  private events: { node: any, type: string, func: any }[] = [];
+  private events: { node: any; type: string; func: any }[] = [];
   private settings: SettingsType;
   private readonly postmate = PostmateManager.instance();
 
-  constructor(width: number, height: number, settings: SettingsType = defaultSettings) {
+  constructor(
+    width: number,
+    height: number,
+    settings: SettingsType = defaultSettings
+  ) {
     this.width = width;
     this.height = height;
     this.settings = settings;
@@ -142,7 +177,10 @@ export default class Viewer3D {
   }
 
   private initRenderer() {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      preserveDrawingBuffer: true
+    });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(this.width, this.height);
     // this.renderer.outputEncoding = THREE.sRGBEncoding;
@@ -175,7 +213,12 @@ export default class Viewer3D {
     }
     // to avoid z-fighting issue, do not set near value too small!
     // https://www.cnblogs.com/lst619247/p/9098845.html
-    this.perspectiveCamera = new THREE.PerspectiveCamera(45, this.width / this.height, this.settings.camera.near, this.settings.camera.far);
+    this.perspectiveCamera = new THREE.PerspectiveCamera(
+      45,
+      this.width / this.height,
+      this.settings.camera.near,
+      this.settings.camera.far
+    );
     this.perspectiveCamera.position.set(0, 100, 0);
     this.scene.add(this.perspectiveCamera); // need to init scene before camera
     this.camera = this.perspectiveCamera;
@@ -242,8 +285,10 @@ export default class Viewer3D {
         if (e.code === "ArrowLeft") {
           theta = -theta; // rotate to left
         }
-        newTarget.x = ((t.x - p.x) * Math.cos(theta) - (t.z - p.z) * Math.sin(theta)) + p.x;
-        newTarget.z = ((t.z - p.z) * Math.cos(theta) + (t.x - p.x) * Math.sin(theta)) + p.z;
+        newTarget.x =
+          (t.x - p.x) * Math.cos(theta) - (t.z - p.z) * Math.sin(theta) + p.x;
+        newTarget.z =
+          (t.z - p.z) * Math.cos(theta) + (t.x - p.x) * Math.sin(theta) + p.z;
         controls.target = newTarget;
         controls.update();
       } else if (e.code === "ArrowUp" || e.code === "ArrowDown") {
@@ -253,8 +298,9 @@ export default class Viewer3D {
         let theta2 = (Math.PI * ANGLE2) / 180; // angle in radians
         const distVec = new THREE.Vector3(t.x - p.x, t.y - p.y, t.z - p.z); // distance vector from p to t
         const dist = distVec.length();
-        const deltaY = (t.y - p.y);
-        if (e.code === "ArrowDown") { // z: rotate down
+        const deltaY = t.y - p.y;
+        if (e.code === "ArrowDown") {
+          // z: rotate down
           theta2 = -theta2;
         }
         const angle = Math.asin(deltaY / dist) + theta2;
@@ -265,7 +311,8 @@ export default class Viewer3D {
         newTarget.y = t.y + (newDeltaY - deltaY);
         controls.target = newTarget;
         controls.update();
-      } else if (e.code === "KeyW") { // go forward
+      } else if (e.code === "KeyW") {
+        // go forward
         const ALPHA = sensitivity * 0.01;
         const dist = p.distanceTo(t);
         if (dist < camera.near) {
@@ -275,14 +322,16 @@ export default class Viewer3D {
         }
         p.lerp(t, ALPHA);
         camera.position.set(p.x, p.y, p.z);
-      } else if (e.code === "KeyS") { // go backward
+      } else if (e.code === "KeyS") {
+        // go backward
         const ALPHA = sensitivity * 0.01;
         p.lerp(t, -ALPHA);
         camera.position.set(p.x, p.y, p.z);
       } else if (e.code === "KeyF") {
         // if there is object selected, fly to it. (This is a design by Unreal Engine)
         this.flyToSelectedObject();
-      } else if (e.code === "KeyT") { // reset target
+      } else if (e.code === "KeyT") {
+        // reset target
         // When a user does rotate(or pan) operation, where is the rotate center(camera's target)?
         // It depends on where is the camera's target as well as where is the camera itself.
         // Assume camera is at p1, user clicked at p2, target is p3, distance between p1 and p2 is d1, distance between p1 and p3 is d2.
@@ -290,13 +339,18 @@ export default class Viewer3D {
         // where distance between p1 and p4 equals d1.
         const intersections = this.getIntersections();
         if (intersections.length > 0) {
-          const firstIntersect = intersections.find(intersect => {
+          const firstIntersect = intersections.find((intersect) => {
             const object = intersect.object;
             // exclude invisible objects
             // exclude non-mesh objects, ground, outline, etc.
             return object.visible && object instanceof THREE.Mesh;
           });
-          if (firstIntersect && firstIntersect.point && this.camera && this.controls) {
+          if (
+            firstIntersect &&
+            firstIntersect.point &&
+            this.camera &&
+            this.controls
+          ) {
             const p1 = this.camera.position;
             const p2 = firstIntersect.point;
             const p3 = this.controls.target;
@@ -381,14 +435,15 @@ export default class Viewer3D {
         setTimeout(this.onPointerUp(this, e), 200);
       }
       if (this.mouseDoubleClicked) {
-        setTimeout(() => { this.mouseDoubleClicked = false }, 200);
+        setTimeout(() => {
+          this.mouseDoubleClicked = false;
+        }, 200);
       }
     });
     this.renderer.domElement.addEventListener("dblclick", (e) => {
       this.mouseDoubleClicked = true;
       if (!this.mouseMoved && (!this.measure || this.measure.isCompleted)) {
-        this.handleMouseClick(e);
-        this.flyToSelectedObject();
+        this.handleDoubleClick(e);
         this.enableRender();
       }
     });
@@ -402,14 +457,22 @@ export default class Viewer3D {
 
   private initPostmate() {
     if (this.postmate.isEmbedded) {
-      this.postmate.addEventListener(MessageId.setObjectsBoxClipper, (messageData: object) => {
-        const value = (messageData as BooleanMessageData).value;
-        value ? this.enableSection("ObjectsBoxSection") : this.disableSection();
-      });
-      this.postmate.addEventListener(MessageId.setObjectsPlaneClipper, (messageData: object) => {
-        const value = (messageData as BooleanMessageData).value;
-        value ? this.enableSection("PlaneSection") : this.disableSection();
-      });
+      this.postmate.addEventListener(
+        MessageId.setObjectsBoxClipper,
+        (messageData: object) => {
+          const value = (messageData as BooleanMessageData).value;
+          value
+            ? this.enableSection("ObjectsBoxSection")
+            : this.disableSection();
+        }
+      );
+      this.postmate.addEventListener(
+        MessageId.setObjectsPlaneClipper,
+        (messageData: object) => {
+          const value = (messageData as BooleanMessageData).value;
+          value ? this.enableSection("PlaneSection") : this.disableSection();
+        }
+      );
     }
   }
 
@@ -451,12 +514,19 @@ export default class Viewer3D {
       }
     }
 
-    console.log(`[Viewer] WebGL: ${DeviceUtils.getWebGlRendererInfo(this.renderer.domElement)}`);
+    console.log(
+      `[Viewer] WebGL: ${DeviceUtils.getWebGlRendererInfo(
+        this.renderer.domElement
+      )}`
+    );
     // erase the black outline when viewer is focused
     this.renderer.domElement.style.outlineWidth = "0";
   }
 
-  sycnCameraPosition(src: THREE.PerspectiveCamera | THREE.OrthographicCamera, dest: THREE.PerspectiveCamera | THREE.OrthographicCamera) {
+  sycnCameraPosition(
+    src: THREE.PerspectiveCamera | THREE.OrthographicCamera,
+    dest: THREE.PerspectiveCamera | THREE.OrthographicCamera
+  ) {
     const p = src.position;
     dest.position.set(p.x, p.y, p.z);
 
@@ -488,7 +558,14 @@ export default class Viewer3D {
     let occ = this.orthoCameraConrols;
     if (isOrthCamera) {
       if (!oc) {
-        oc = new THREE.OrthographicCamera(-this.width / 2, this.width / 2, this.height / 2, -this.height / 2, this.settings.camera.near, this.settings.camera.far);
+        oc = new THREE.OrthographicCamera(
+          -this.width / 2,
+          this.width / 2,
+          this.height / 2,
+          -this.height / 2,
+          this.settings.camera.near,
+          this.settings.camera.far
+        );
         oc.position.set(0, 100, 0);
         oc.zoom = 10; // it seems 10 works better, but don't know how to set a better one!
         oc.updateProjectionMatrix();
@@ -540,6 +617,9 @@ export default class Viewer3D {
     }
     this.frustrumCullingByModelBBox();
     this.stats && this.stats.update();
+
+    // 更新注释标签位置
+    this.updateAnnotationLabels();
   }
 
   /**
@@ -551,42 +631,50 @@ export default class Viewer3D {
     const projScreenMatrix = new THREE.Matrix4();
     this.isFrustumInsectChecking = true;
     if (this.camera) {
-      projScreenMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+      projScreenMatrix.multiplyMatrices(
+        this.camera.projectionMatrix,
+        this.camera.matrixWorldInverse
+      );
       frustum.setFromProjectionMatrix(projScreenMatrix);
-      Object.values(this.loadedModels).forEach((obj: {uuid: string, bbox?: THREE.BoxHelper}) => {
-        const model = this.scene && this.scene.getObjectByProperty("uuid", obj.uuid);
-        const bbox = obj.bbox;
-        if (model && bbox && this.scene) {
-          // adds userData to model
-          // userData: {
-          //   _visible: boolean,
-          //   userConfigVisibility: boolean
-          // }
-          // userConfigVisibility is a flag to indicate if model's visibility ever changed by user
-          // from BimTree, LayerManager, etc. If ever changed, then frustrumCullingByModelBBox shouldn't
-          // work for thus model any more.
-          if (typeof model.userData._visible === "undefined") {
-            model.userData._visible = true;
-            Object.defineProperties(model, {
-              visible: {
-                set: (val) => {
-                  model.userData._visible = val;
-                  if (!this.isFrustumInsectChecking) {
-                    model.userData.userConfigVisibility = true;
-                  }
-                },
-                get: () => model.userData._visible
+      Object.values(this.loadedModels).forEach(
+        (obj: { uuid: string; bbox?: THREE.BoxHelper }) => {
+          const model =
+            this.scene && this.scene.getObjectByProperty("uuid", obj.uuid);
+          const bbox = obj.bbox;
+          if (model && bbox && this.scene) {
+            // adds userData to model
+            // userData: {
+            //   _visible: boolean,
+            //   userConfigVisibility: boolean
+            // }
+            // userConfigVisibility is a flag to indicate if model's visibility ever changed by user
+            // from BimTree, LayerManager, etc. If ever changed, then frustrumCullingByModelBBox shouldn't
+            // work for thus model any more.
+            if (typeof model.userData._visible === "undefined") {
+              model.userData._visible = true;
+              Object.defineProperties(model, {
+                visible: {
+                  set: (val) => {
+                    model.userData._visible = val;
+                    if (!this.isFrustumInsectChecking) {
+                      model.userData.userConfigVisibility = true;
+                    }
+                  },
+                  get: () => model.userData._visible
+                }
+              });
+            }
+            if (typeof model.userData.userConfigVisibility === "undefined") {
+              bbox.geometry.computeBoundingBox();
+              if (bbox.geometry.boundingBox) {
+                model.visible = frustum.intersectsBox(
+                  bbox.geometry.boundingBox
+                );
               }
-            });
-          }
-          if (typeof model.userData.userConfigVisibility === "undefined") {
-            bbox.geometry.computeBoundingBox();
-            if (bbox.geometry.boundingBox) {
-              model.visible = frustum.intersectsBox(bbox.geometry.boundingBox);
             }
           }
         }
-      });
+      );
     }
     this.isFrustumInsectChecking = false;
   }
@@ -614,7 +702,7 @@ export default class Viewer3D {
 
   beforeDestroy() {
     // remove events
-    this.events.forEach(e => e.node.removeEventListener(e.type, e.func));
+    this.events.forEach((e) => e.node.removeEventListener(e.type, e.func));
     this.events = [];
     if (this.datGui && this.datGui.gui) {
       this.datGui.beforeDestroy();
@@ -639,7 +727,7 @@ export default class Viewer3D {
      * https://github.com/mrdoob/three.js/releases/tag/r120
      * Scene: Remove dispose()
      * @details https://github.com/mrdoob/three.js/pull/19972
-    */
+     */
     // this.scene && this.scene.dispose()
     if (this.scene) {
       this.scene.clear();
@@ -681,7 +769,7 @@ export default class Viewer3D {
     }
     this.savedMaterialsForOpacity = undefined;
     this.section = undefined;
-    Object.keys(this.loadedModels).forEach(key => {
+    Object.keys(this.loadedModels).forEach((key) => {
       delete this.loadedModels[key];
     });
     if (this.raf) {
@@ -689,11 +777,18 @@ export default class Viewer3D {
       this.raf = undefined;
     }
     if (this.postmate.isEmbedded) {
-      this.postmate.removeEventListener(MessageId.setObjectsBoxClipper, MessageId.setObjectsPlaneClipper);
+      this.postmate.removeEventListener(
+        MessageId.setObjectsBoxClipper,
+        MessageId.setObjectsPlaneClipper
+      );
     }
   }
 
-  async loadLocalModel(options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
+  async loadLocalModel(
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
     const url = options.src;
     const fileName = options.src.toLowerCase();
     if (fileName.endsWith("fbx")) {
@@ -713,7 +808,11 @@ export default class Viewer3D {
     }
   }
 
-  async loadModel(options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
+  async loadModel(
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
     const url = options.src.toLowerCase();
     if (url.endsWith("fbx")) {
       return this.loadFbx(url, options, onProgress, onError);
@@ -732,50 +831,21 @@ export default class Viewer3D {
     }
   }
 
-  async loadGltf(url: string, options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
+  async loadGltf(
+    url: string,
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
     const loader = this.getGltfLoader();
     return new Promise<THREE.Object3D>((resolve, reject) => {
       if (url.indexOf("#") !== -1) {
         console.warn(`[Viewer3D] '#' is not allowed in filename ${url}`);
       }
-      loader.load(url.replace(/#/g, encodeURIComponent("#")), gltf => {
-        const object = gltf.scene;
-        this.applyOptionsAndAddToScene(url, object, options);
-        resolve(object);
-      },
-      onProgress,
-      (event) => {
-        onError && onError(event);
-        reject(event);
-      });
-    });
-  }
-
-  async loadFbx(url: string, options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
-    const loader = new FBXLoader();
-    return new Promise<THREE.Object3D>((resolve, reject) => {
-      loader.load(url, object => {
-        this.applyOptionsAndAddToScene(url, object, options);
-        resolve(object);
-      },
-      onProgress,
-      (event) => {
-        onError && onError(event);
-        reject(event);
-      });
-    });
-  }
-
-  async loadObj(url: string, options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
-    const loader = new OBJLoader();
-    const mtlLoader = new MTLLoader();
-    // for now, assume mtl is under the same folder (TODO: refine it later)
-    const mtlUrl = url.replace(".obj", ".mtl");
-    return new Promise<THREE.Object3D>((resolve, reject) => {
-      mtlLoader.load(mtlUrl, material => {
-        material.preload();
-        loader.setMaterials(material);
-        loader.load(url, object => {
+      loader.load(
+        url.replace(/#/g, encodeURIComponent("#")),
+        (gltf) => {
+          const object = gltf.scene;
           this.applyOptionsAndAddToScene(url, object, options);
           resolve(object);
         },
@@ -783,36 +853,102 @@ export default class Viewer3D {
         (event) => {
           onError && onError(event);
           reject(event);
-        });
+        }
+      );
+    });
+  }
+
+  async loadFbx(
+    url: string,
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
+    const loader = new FBXLoader();
+    return new Promise<THREE.Object3D>((resolve, reject) => {
+      loader.load(
+        url,
+        (object) => {
+          this.applyOptionsAndAddToScene(url, object, options);
+          resolve(object);
+        },
+        onProgress,
+        (event) => {
+          onError && onError(event);
+          reject(event);
+        }
+      );
+    });
+  }
+
+  async loadObj(
+    url: string,
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
+    const loader = new OBJLoader();
+    const mtlLoader = new MTLLoader();
+    // for now, assume mtl is under the same folder (TODO: refine it later)
+    const mtlUrl = url.replace(".obj", ".mtl");
+    return new Promise<THREE.Object3D>((resolve, reject) => {
+      mtlLoader.load(mtlUrl, (material) => {
+        material.preload();
+        loader.setMaterials(material);
+        loader.load(
+          url,
+          (object) => {
+            this.applyOptionsAndAddToScene(url, object, options);
+            resolve(object);
+          },
+          onProgress,
+          (event) => {
+            onError && onError(event);
+            reject(event);
+          }
+        );
       });
     });
   }
 
-  async loadStl(url: string, options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
+  async loadStl(
+    url: string,
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
     const loader = new STLLoader();
     return new Promise<THREE.Object3D>((resolve, reject) => {
-      loader.load(url, (geometry: THREE.BufferGeometry) => {
-        const object = new THREE.Mesh(geometry);
-        if (options.src) {
-          object.name = options.src;
-        } else {
-          const i = url.lastIndexOf("/");
-          if (i !== -1) {
-            object.name = url.substr(i + 1);
+      loader.load(
+        url,
+        (geometry: THREE.BufferGeometry) => {
+          const object = new THREE.Mesh(geometry);
+          if (options.src) {
+            object.name = options.src;
+          } else {
+            const i = url.lastIndexOf("/");
+            if (i !== -1) {
+              object.name = url.substr(i + 1);
+            }
           }
+          this.applyOptionsAndAddToScene(url, object, options);
+          resolve(object);
+        },
+        onProgress,
+        (event) => {
+          onError && onError(event);
+          reject(event);
         }
-        this.applyOptionsAndAddToScene(url, object, options);
-        resolve(object);
-      },
-      onProgress,
-      (event) => {
-        onError && onError(event);
-        reject(event);
-      });
+      );
     });
   }
 
-  async loadIfc(url: string, options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
+  async loadIfc(
+    url: string,
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
     if (!this.scene) {
       throw new Error("Failed to load!");
     }
@@ -833,99 +969,134 @@ export default class Viewer3D {
     }
     const loader = this.ifcLoader;
     return new Promise<THREE.Object3D>((resolve, reject) => {
-      loader.load(url, (ifcModel: any) => {
-        this.applyOptionsAndAddToScene(url, ifcModel.mesh, options);
-        resolve(ifcModel.mesh);
-      },
-      onProgress,
-      (event: any) => {
-        onError && onError(event);
-        reject(event);
-      });
+      loader.load(
+        url,
+        (ifcModel: any) => {
+          this.applyOptionsAndAddToScene(url, ifcModel.mesh, options);
+          resolve(ifcModel.mesh);
+        },
+        onProgress,
+        (event: any) => {
+          onError && onError(event);
+          reject(event);
+        }
+      );
     });
   }
 
-  async loadShp(url: string, options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
+  async loadShp(
+    url: string,
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
     if (!this.scene) {
       throw new Error("Failed to load!");
     }
     const loader = new SHPLoader();
     return new Promise<THREE.Object3D>((resolve, reject) => {
-      loader.load(url, object => {
-        this.applyOptionsAndAddToScene(url, object, options);
-        resolve(object);
-      },
-      onProgress,
-      (event) => {
-        onError && onError(event);
-        reject(event);
-      });
+      loader.load(
+        url,
+        (object) => {
+          this.applyOptionsAndAddToScene(url, object, options);
+          resolve(object);
+        },
+        onProgress,
+        (event) => {
+          onError && onError(event);
+          reject(event);
+        }
+      );
     });
   }
 
-  async loadDae(url: string, options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
+  async loadDae(
+    url: string,
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
     if (!this.scene) {
       throw new Error("Failed to load!");
     }
     const loader = new ColladaLoader();
     return new Promise<THREE.Object3D>((resolve, reject) => {
-      loader.load(url, (collada: Collada) => {
-        if (!collada) {
-          const event = new ErrorEvent("");
+      loader.load(
+        url,
+        (collada: Collada) => {
+          if (!collada) {
+            const event = new ErrorEvent("");
+            onError && onError(event);
+            reject(event);
+          } else {
+            const object = collada.scene;
+            this.applyOptionsAndAddToScene(url, object, options);
+            resolve(object);
+          }
+        },
+        onProgress,
+        (event) => {
           onError && onError(event);
           reject(event);
-        } else {
-          const object = collada.scene;
-          this.applyOptionsAndAddToScene(url, object, options);
-          resolve(object);
         }
-      },
-      onProgress,
-      (event) => {
-        onError && onError(event);
-        reject(event);
-      });
+      );
     });
   }
 
-  async loadPly(url: string, options: Model, onProgress?: (event: ProgressEvent) => void, onError?: (event: ErrorEvent) => void): Promise<THREE.Object3D> {
+  async loadPly(
+    url: string,
+    options: Model,
+    onProgress?: (event: ProgressEvent) => void,
+    onError?: (event: ErrorEvent) => void
+  ): Promise<THREE.Object3D> {
     if (!this.scene) {
       throw new Error("Failed to load!");
     }
     const loader = new PLYLoader();
     return new Promise<THREE.Object3D>((resolve, reject) => {
-      loader.load(url, (geometry: THREE.BufferGeometry) => {
-        const object = new THREE.Mesh(geometry);
-        if (options.src) {
-          object.name = options.src;
-        } else {
-          const i = url.lastIndexOf("/");
-          if (i !== -1) {
-            object.name = url.substr(i + 1);
+      loader.load(
+        url,
+        (geometry: THREE.BufferGeometry) => {
+          const object = new THREE.Mesh(geometry);
+          if (options.src) {
+            object.name = options.src;
+          } else {
+            const i = url.lastIndexOf("/");
+            if (i !== -1) {
+              object.name = url.substr(i + 1);
+            }
           }
+          this.applyOptionsAndAddToScene(url, object, options);
+          resolve(object);
+        },
+        onProgress,
+        (event) => {
+          onError && onError(event);
+          reject(event);
         }
-        this.applyOptionsAndAddToScene(url, object, options);
-        resolve(object);
-      },
-      onProgress,
-      (event) => {
-        onError && onError(event);
-        reject(event);
-      });
+      );
     });
   }
 
   /**
    * Applies options and add object to scene.
    */
-  private applyOptionsAndAddToScene(url: string, object: THREE.Object3D, options: Model) {
+  private applyOptionsAndAddToScene(
+    url: string,
+    object: THREE.Object3D,
+    options: Model
+  ) {
     const position = options.position || [0, 0, 0];
     const rotation = options.rotation || [0, 0, 0];
     const scale = options.scale || [1, 1, 1];
     const instantiate = options.instantiate;
     const merge = options.merge;
     object.position.set(position[0], position[1], position[2]);
-    object.rotation.set(rotation[0] * Math.PI / 180.0, rotation[1] * Math.PI / 180.0, rotation[2] * Math.PI / 180.0);
+    object.rotation.set(
+      (rotation[0] * Math.PI) / 180.0,
+      (rotation[1] * Math.PI) / 180.0,
+      (rotation[2] * Math.PI) / 180.0
+    );
     object.scale.set(scale[0], scale[1], scale[2]);
     if (instantiate) {
       // load and display first, then do instantiation
@@ -979,7 +1150,7 @@ export default class Viewer3D {
     // object.updateMatrix() whenever their position/rotation/quaternion/scale are updated.
     object.matrixAutoUpdate = matrixAutoUpdate;
     object.updateMatrix();
-    object.traverse(obj => {
+    object.traverse((obj) => {
       if (!matrixAutoUpdate && obj.matrixAutoUpdate) {
         obj.matrixAutoUpdate = matrixAutoUpdate;
         obj.updateMatrix();
@@ -995,7 +1166,7 @@ export default class Viewer3D {
         if (obj.material instanceof THREE.Material) {
           tryMakeTransparent(obj.material);
         } else if (Array.isArray(obj.material)) {
-          obj.material.forEach(mat => {
+          obj.material.forEach((mat) => {
             tryMakeTransparent(mat);
           });
         }
@@ -1005,7 +1176,8 @@ export default class Viewer3D {
     const bbox = new THREE.BoxHelper(object);
     bbox.visible = false;
     bbox.matrixAutoUpdate = matrixAutoUpdate;
-    if (bbox.material) { // prevent ray from hitting the BoxHelper
+    if (bbox.material) {
+      // prevent ray from hitting the BoxHelper
       // @ts-ignore
       bbox.material = undefined;
       bbox.userData.selectable = false;
@@ -1015,8 +1187,8 @@ export default class Viewer3D {
       uuid: object.uuid,
       bbox
     };
-    const modelUuids = Object.values(this.loadedModels).map(obj => obj.uuid);
-    const isFirstModel = (!modelUuids || modelUuids.length <= 1);
+    const modelUuids = Object.values(this.loadedModels).map((obj) => obj.uuid);
+    const isFirstModel = !modelUuids || modelUuids.length <= 1;
     if (isFirstModel) {
       const ctrl = this.datGui && this.datGui.controls;
       this.regenSkyOfGradientRamp();
@@ -1048,17 +1220,29 @@ export default class Viewer3D {
       return;
     }
     const scene = this.scene;
-    const materialInfoList:MaterialInfo[] = [];
-    Object.keys(this.loadedModels).forEach(key => {
+    const materialInfoList: MaterialInfo[] = [];
+    Object.keys(this.loadedModels).forEach((key) => {
       const obj = this.loadedModels[key];
       if (isAdd) {
         if (this.savedMaterialsForOpacity!.length > 0) {
-          ObjectUtils.revertObjectOpacityByUuid(scene, obj.uuid, this.savedMaterialsForOpacity!);
+          ObjectUtils.revertObjectOpacityByUuid(
+            scene,
+            obj.uuid,
+            this.savedMaterialsForOpacity!
+          );
         }
-        const list = ObjectUtils.setObjectOpacityByUuid(scene, obj.uuid, opacity);
+        const list = ObjectUtils.setObjectOpacityByUuid(
+          scene,
+          obj.uuid,
+          opacity
+        );
         materialInfoList.push(...list);
       } else {
-        ObjectUtils.revertObjectOpacityByUuid(scene, obj.uuid, this.savedMaterialsForOpacity!);
+        ObjectUtils.revertObjectOpacityByUuid(
+          scene,
+          obj.uuid,
+          this.savedMaterialsForOpacity!
+        );
       }
     });
     if (isAdd) {
@@ -1097,24 +1281,30 @@ export default class Viewer3D {
       }
       if (this.effectFxaaPass) {
         // eslint-disable-next-line
-        this.effectFxaaPass.uniforms["resolution"].value.set(1 / this.width, 1 / this.height)
+        this.effectFxaaPass.uniforms["resolution"].value.set(
+          1 / this.width,
+          1 / this.height
+        );
       }
     }
     this.enableRender();
   }
 
-  private clonedHighlightMaterials(mesh: THREE.Mesh, options: {
-    depthTest?: boolean,
-    highlightColor?: THREE.Color,
-    opacity?: number
-  } = {}): THREE.Material | THREE.Material[] | undefined {
+  private clonedHighlightMaterials(
+    mesh: THREE.Mesh,
+    options: {
+      depthTest?: boolean;
+      highlightColor?: THREE.Color;
+      opacity?: number;
+    } = {}
+  ): THREE.Material | THREE.Material[] | undefined {
     if (!mesh || !mesh.material) {
       return undefined;
     }
     const mat = mesh.material;
     if (Array.isArray(mat) && mat.length > 0) {
       const newMaterials: Material[] = [];
-      mat.forEach(m => {
+      mat.forEach((m) => {
         newMaterials.push(this.clonedHighlightMaterial(m, options));
       });
       return newMaterials;
@@ -1126,12 +1316,19 @@ export default class Viewer3D {
     return undefined;
   }
 
-  private clonedHighlightMaterial(material: Material, options: {
-    depthTest?: boolean,
-    highlightColor?: THREE.Color,
-    opacity?: number
-  } = {}) {
-    const { depthTest = undefined, highlightColor = new THREE.Color(0xff00ff), opacity = 0.7 } = options;
+  private clonedHighlightMaterial(
+    material: Material,
+    options: {
+      depthTest?: boolean;
+      highlightColor?: THREE.Color;
+      opacity?: number;
+    } = {}
+  ) {
+    const {
+      depthTest = undefined,
+      highlightColor = new THREE.Color(0xff00ff),
+      opacity = 0.7
+    } = options;
     // change highlight color here is we don't like it
     // the original mererial may be used by many objects, we cannot change the original one, thus need to clone
     const mat = material.clone();
@@ -1180,8 +1377,9 @@ export default class Viewer3D {
     const coords = new THREE.Vector2(x, y);
     this.raycaster.setFromCamera(coords, this.camera);
     const objects: THREE.Object3D[] = [];
-    Object.values(this.loadedModels).forEach(obj => {
-      const object = this.scene && this.scene.getObjectByProperty("uuid", obj.uuid);
+    Object.values(this.loadedModels).forEach((obj) => {
+      const object =
+        this.scene && this.scene.getObjectByProperty("uuid", obj.uuid);
       if (object && object.visible) {
         objects.push(object);
       }
@@ -1198,11 +1396,14 @@ export default class Viewer3D {
       return;
     }
     const intersections = this.getIntersections(event);
-    const firstIntersect = intersections.find(intersect => {
+    const firstIntersect = intersections.find((intersect) => {
       const object = intersect.object;
       // exclude invisible objects
       // exclude non-selectable non-mesh objects, ground, outline, etc. It's kind of complex, but gonna be wired if user can select another object behand a mesh.
-      return object.visible && (object.userData.selectable !== false || object instanceof THREE.Mesh);
+      return (
+        object.visible &&
+        (object.userData.selectable !== false || object instanceof THREE.Mesh)
+      );
     });
     let object = (firstIntersect && firstIntersect.object) || undefined;
     let instanceId;
@@ -1210,24 +1411,36 @@ export default class Viewer3D {
       if (object.userData.selectable === false) {
         // If the first intersect object is not selectable (sky, ground, merged mesh, etc.),
         // don't select anything (don't select the second object, that seems wired).
-        console.log(`[Viewer] object(type: ${object.type}, name: ${object.name}) not selectable!`);
+        console.log(
+          `[Viewer] object(type: ${object.type}, name: ${object.name}) not selectable!`
+        );
         object = undefined;
       } else if (object instanceof THREE.InstancedMesh) {
         instanceId = (firstIntersect as THREE.Intersection).instanceId;
-        if (this.selectedObject && this.selectedObject.uuid === object.uuid && this.selectedObject.userData.instanceId === instanceId) {
+        if (
+          this.selectedObject &&
+          this.selectedObject.uuid === object.uuid &&
+          this.selectedObject.userData.instanceId === instanceId
+        ) {
           // if the same InstancedMesh is selected and with the same instanceId, then deselect it
           object = undefined;
         }
-      // donna know why I cannot use "instanceof IFCModel" here
+        // donna know why I cannot use "instanceof IFCModel" here
       } else if ((object as any).ifcManager) {
         // const ifcObj = object as IFCModel;
         const faceIndex = (firstIntersect && firstIntersect.faceIndex) || -1;
         instanceId = faceIndex; // for IFCModel, instanceId means faceIndex!!
-        if (this.selectedObject && this.selectedObject.userData.faceIndex === faceIndex) {
+        if (
+          this.selectedObject &&
+          this.selectedObject.userData.faceIndex === faceIndex
+        ) {
           // if the same IFCModel is selected and with the same instanceId, then deselect it
           object = undefined;
         }
-      } else if (this.selectedObject && this.selectedObject.uuid === object.uuid) {
+      } else if (
+        this.selectedObject &&
+        this.selectedObject.uuid === object.uuid
+      ) {
         // if one object is selected twice, deselect it
         object = undefined;
       }
@@ -1235,7 +1448,41 @@ export default class Viewer3D {
     object ? this.selectObject(object, instanceId) : this.clearSelection();
   }
 
-  private ifcHighlightMaterial = new THREE.MeshPhongMaterial({ color: 0xff00ff, depthTest: false, transparent: true, opacity: 0.3 });
+  /**
+   * 处理双击事件，用于创建注释
+   */
+  private handleDoubleClick(event: MouseEvent) {
+    // when measure is enabled, disable annotation feature
+    if (this.measure && !this.measure.isCompleted) {
+      return;
+    }
+
+    const intersections = this.getIntersections(event);
+    const firstIntersect = intersections.find((intersect) => {
+      const object = intersect.object;
+      return (
+        object.visible &&
+        (object.userData.selectable !== false || object instanceof THREE.Mesh)
+      );
+    });
+
+    if (firstIntersect) {
+      const object = firstIntersect.object;
+      const position = firstIntersect.point;
+
+      // 触发注释回调
+      if (this.annotationCallback) {
+        this.annotationCallback(object, position, event);
+      }
+    }
+  }
+
+  private ifcHighlightMaterial = new THREE.MeshPhongMaterial({
+    color: 0xff00ff,
+    depthTest: false,
+    transparent: true,
+    opacity: 0.3
+  });
 
   /**
    * Select or unselect an object.
@@ -1260,11 +1507,19 @@ export default class Viewer3D {
    * made by program, we parbably need to make sure user can see it, in other words, the selected
    * object won't be blocked by other objects.
    */
-  public selectObject(object?: THREE.Object3D, instanceIdOrFaceIndexId?: number, depthTest: boolean | undefined = undefined) {
+  public selectObject(
+    object?: THREE.Object3D,
+    instanceIdOrFaceIndexId?: number,
+    depthTest: boolean | undefined = undefined
+  ) {
     // revert last selected object's material if any
     if (this.selectedObject) {
       const userData = this.selectedObject.userData;
-      if (userData.instanceId != null && userData.originalMatrix && userData.clonedMesh) {
+      if (
+        userData.instanceId != null &&
+        userData.originalMatrix &&
+        userData.clonedMesh
+      ) {
         this.scene && this.scene.remove(userData.clonedMesh); // clear the cloned mesh
         const im = this.selectedObject as THREE.InstancedMesh;
         im.setMatrixAt(userData.instanceId, userData.originalMatrix); // revert the matrix
@@ -1299,7 +1554,7 @@ export default class Viewer3D {
           // manually dispose it according to https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
           const material = this.selectedObject.material;
           if (Array.isArray(material)) {
-            material.forEach(m => m.dispose());
+            material.forEach((m) => m.dispose());
           } else if (material instanceof THREE.Material) {
             material.dispose();
           }
@@ -1315,7 +1570,10 @@ export default class Viewer3D {
     if (!this.scene || !object) {
       return;
     }
-    if (object instanceof THREE.InstancedMesh && instanceIdOrFaceIndexId != null) {
+    if (
+      object instanceof THREE.InstancedMesh &&
+      instanceIdOrFaceIndexId != null
+    ) {
       const im = object as THREE.InstancedMesh;
       const originalMatrix = new THREE.Matrix4();
       const hideMatrix = new THREE.Matrix4();
@@ -1330,7 +1588,9 @@ export default class Viewer3D {
       // https://threejs.org/examples/?q=instanc#webgl_instancing_raycast
       // While, it sounds like only support MeshPhongMaterial. So here, we'll clone
       // a mesh with highlighted color to replace the original instance in InstancedMesh
-      const clonedMaterial = this.clonedHighlightMaterials(object, { depthTest });
+      const clonedMaterial = this.clonedHighlightMaterials(object, {
+        depthTest
+      });
       if (clonedMaterial) {
         // clone a new mesh for the selected instance
         const clonedMesh = new THREE.Mesh(im.geometry.clone(), clonedMaterial);
@@ -1376,16 +1636,22 @@ export default class Viewer3D {
             console.log("Properties", props);
             this.selectedObject = subset;
           } else {
-            console.warn(`[Viewer3D] Failed to createSubset for ifc modelID: ${modelID}, id: ${id}`);
+            console.warn(
+              `[Viewer3D] Failed to createSubset for ifc modelID: ${modelID}, id: ${id}`
+            );
           }
         }
       }
     } else {
       // save the original material, so we can reverit it back when deselect
-      const clonedMaterial = this.clonedHighlightMaterials(object as THREE.Mesh, { depthTest });
+      const clonedMaterial = this.clonedHighlightMaterials(
+        object as THREE.Mesh,
+        { depthTest }
+      );
       if (clonedMaterial) {
         this.selectedObject = object;
-        this.selectedObject.userData.originalMaterial = this.selectedObject.material;
+        this.selectedObject.userData.originalMaterial =
+          this.selectedObject.material;
         this.selectedObject.material = clonedMaterial;
         if (this.outlinePass) {
           this.outlinePass.selectedObjects = [object];
@@ -1442,16 +1708,29 @@ export default class Viewer3D {
    * @param position camera's target position
    * @param lookAt camera's new lookAt position
    */
-  public flyTo(position: THREE.Vector3, lookAt: THREE.Vector3, onCompleteCallback?: () => void) {
+  public flyTo(
+    position: THREE.Vector3,
+    lookAt: THREE.Vector3,
+    onCompleteCallback?: () => void
+  ) {
     const camera = this.camera;
     const controls = this.controls;
     if (!camera || !controls) {
       return;
     }
     if (position.equals(lookAt)) {
-      console.error("[Viewer3D] camera position and lookAt cannot be the same!");
+      console.error(
+        "[Viewer3D] camera position and lookAt cannot be the same!"
+      );
       return;
-    } else if (isNaN(position.x) || isNaN(position.y) || isNaN(position.z) || isNaN(lookAt.x) || isNaN(lookAt.y) || isNaN(lookAt.z)) {
+    } else if (
+      isNaN(position.x) ||
+      isNaN(position.y) ||
+      isNaN(position.z) ||
+      isNaN(lookAt.x) ||
+      isNaN(lookAt.y) ||
+      isNaN(lookAt.z)
+    ) {
       console.error("[Viewer3D] invalid position or lookAt!");
       return;
     }
@@ -1460,11 +1739,19 @@ export default class Viewer3D {
     const distance = position.distanceTo(lookAt);
     if (distance < camera.near) {
       // the new position is just farer than original position
-      position = position.clone().sub(lookAt).normalize().multiplyScalar(camera.near * 1.1);
+      position = position
+        .clone()
+        .sub(lookAt)
+        .normalize()
+        .multiplyScalar(camera.near * 1.1);
       console.warn("[Viewer3D] camera could be too close to see the object!");
     } else if (distance > camera.far) {
       // the new position is just closer than original position
-      position = position.clone().sub(lookAt).normalize().multiplyScalar(camera.far * 0.9);
+      position = position
+        .clone()
+        .sub(lookAt)
+        .normalize()
+        .multiplyScalar(camera.far * 0.9);
       console.warn("[Viewer3D] camera could be too far to see the object!");
     }
 
@@ -1516,7 +1803,13 @@ export default class Viewer3D {
       // if home.eye not defined in project, then go to 'Front'
       const eye = new THREE.Vector3();
       const look = new THREE.Vector3();
-      Viewer3DUtils.getCameraPositionByObjectUuids(this.scene, Object.values(this.loadedModels).map(obj => obj.uuid), Views.Front, eye, look);
+      Viewer3DUtils.getCameraPositionByObjectUuids(
+        this.scene,
+        Object.values(this.loadedModels).map((obj) => obj.uuid),
+        Views.Front,
+        eye,
+        look
+      );
       // do not allow camera's target and position is the same point!!
       if (!eye.equals(look)) {
         this.flyTo(eye, look);
@@ -1538,7 +1831,7 @@ export default class Viewer3D {
       this.skyOfGradientRamp.clear();
       this.skyOfGradientRamp = undefined;
     }
-    const modelUuids = Object.values(this.loadedModels).map(obj => obj.uuid);
+    const modelUuids = Object.values(this.loadedModels).map((obj) => obj.uuid);
     if (modelUuids) {
       const proj = store.state.activeProject;
       const home = proj && proj.camera;
@@ -1550,9 +1843,14 @@ export default class Viewer3D {
         const bbox = new THREE.Box3();
         bbox.expandByPoint(new THREE.Vector3(p1.x, p1.y, p1.z));
         bbox.expandByPoint(new THREE.Vector3(p2.x, p2.y, p2.z));
-        this.skyOfGradientRamp = SkyboxUtils.createSkyOfGradientRampByBoundingBox(bbox);
+        this.skyOfGradientRamp =
+          SkyboxUtils.createSkyOfGradientRampByBoundingBox(bbox);
       } else {
-        this.skyOfGradientRamp = SkyboxUtils.createSkyOfGradientRampByObjectsInScene(this.scene, modelUuids);
+        this.skyOfGradientRamp =
+          SkyboxUtils.createSkyOfGradientRampByObjectsInScene(
+            this.scene,
+            modelUuids
+          );
       }
       this.scene.add(this.skyOfGradientRamp);
     }
@@ -1570,14 +1868,18 @@ export default class Viewer3D {
       (this.groundGrid.material as THREE.Material).dispose();
       this.scene.remove(this.groundGrid);
     }
-    const modelUuids = Object.values(this.loadedModels).map(obj => obj.uuid);
+    const modelUuids = Object.values(this.loadedModels).map((obj) => obj.uuid);
     if (modelUuids) {
       const proj = store.state.activeProject;
       const home = proj && proj.camera;
       const center = home && ProjectManager.arrayToVector3(home.look);
       center && (center.y = 0);
       // TODO: will need to consider ground size according to models' size
-      this.groundGrid = GroundUtils.createGroundGrid(undefined, undefined, center);
+      this.groundGrid = GroundUtils.createGroundGrid(
+        undefined,
+        undefined,
+        center
+      );
       this.scene.add(this.groundGrid);
     }
   }
@@ -1628,7 +1930,7 @@ export default class Viewer3D {
     if (enable && !this.effectFxaaPass) {
       const pass = new ShaderPass(FXAAShader);
       // eslint-disable-next-line
-      pass.uniforms["resolution"].value.set(1 / this.width, 1 / this.height)
+      pass.uniforms["resolution"].value.set(1 / this.width, 1 / this.height);
       pass.setSize(this.width, this.height);
       pass.renderToScreen = true;
       this.composer.addPass(pass);
@@ -1649,7 +1951,13 @@ export default class Viewer3D {
     }
 
     if (enable && !this.saoPass) {
-      const pass = new SAOPass(this.scene, this.camera, false, true, new THREE.Vector2(1 / this.width, 1 / this.height));
+      const pass = new SAOPass(
+        this.scene,
+        this.camera,
+        false,
+        true,
+        new THREE.Vector2(1 / this.width, 1 / this.height)
+      );
       pass.setSize(this.width, this.height);
       // pass.renderToScreen = true
       // pass.resolution.set(1024, 1024)
@@ -1681,7 +1989,12 @@ export default class Viewer3D {
     }
 
     if (enable && !this.ssaoPass) {
-      const pass = new SSAOPass(this.scene, this.camera, this.width, this.height);
+      const pass = new SSAOPass(
+        this.scene,
+        this.camera,
+        this.width,
+        this.height
+      );
       pass.kernelRadius = 16;
       pass.minDistance = 0.005; // 0.001 - 0.02
       pass.maxDistance = 0.1; // 0.01 - 0.3
@@ -1704,7 +2017,11 @@ export default class Viewer3D {
     }
 
     if (enable && !this.outlinePass) {
-      const pass = new OutlinePass(new THREE.Vector2(this.width, this.height), this.scene, this.camera);
+      const pass = new OutlinePass(
+        new THREE.Vector2(this.width, this.height),
+        this.scene,
+        this.camera
+      );
       pass.edgeStrength = 3;
       pass.edgeGlow = 0;
       pass.edgeThickness = 2;
@@ -1773,7 +2090,12 @@ export default class Viewer3D {
     }
 
     if (enable && !this.unrealBloomPass) {
-      const pass = new UnrealBloomPass(new THREE.Vector2(this.width, this.height), 1, 0, 0);
+      const pass = new UnrealBloomPass(
+        new THREE.Vector2(this.width, this.height),
+        1,
+        0,
+        0
+      );
       pass.threshold = 0;
       pass.strength = 0.5;
       pass.radius = 0;
@@ -1797,17 +2119,29 @@ export default class Viewer3D {
     if (this.section) {
       this.disableSection();
     }
-    const modelUuids = Object.values(this.loadedModels).map(obj => obj.uuid);
+    const modelUuids = Object.values(this.loadedModels).map((obj) => obj.uuid);
     if (!modelUuids || modelUuids.length < 1) {
       console.warn("No object to section!");
       return;
     }
     this.renderer.localClippingEnabled = true;
     if (sectionMode === "ObjectsBoxSection") {
-      this.section = new ObjectsBoxSection(modelUuids, this.scene, this.camera, this.renderer, this.controls);
+      this.section = new ObjectsBoxSection(
+        modelUuids,
+        this.scene,
+        this.camera,
+        this.renderer,
+        this.controls
+      );
       this.section.open();
     } else if (sectionMode === "PlaneSection") {
-      this.section = new ObjectsPlaneSection(modelUuids, this.scene, this.camera, this.renderer, this.controls);
+      this.section = new ObjectsPlaneSection(
+        modelUuids,
+        this.scene,
+        this.camera,
+        this.renderer,
+        this.controls
+      );
       this.section.open();
     }
     this.enableRender();
@@ -1831,7 +2165,14 @@ export default class Viewer3D {
     if (this.measure) {
       this.disableMeasure();
     }
-    this.measure = new Measure(this.renderer, this.scene, this.camera, this.controls, mode, this.settings);
+    this.measure = new Measure(
+      this.renderer,
+      this.scene,
+      this.camera,
+      this.controls,
+      mode,
+      this.settings
+    );
     this.measure.open();
   }
 
@@ -1869,6 +2210,68 @@ export default class Viewer3D {
       this.webcamPlane.geometry.dispose();
       (this.webcamPlane.material as THREE.Material).dispose();
       this.scene.remove(this.webcamPlane);
+    }
+  }
+
+  /**
+   * 初始化注释管理器
+   */
+  public initAnnotationManager(container: HTMLElement) {
+    this.annotationManager = new AnnotationManager(this, container);
+  }
+
+  /**
+   * 设置注释回调
+   */
+  public setAnnotationCallback(
+    callback: (
+      object: THREE.Object3D,
+      position: THREE.Vector3,
+      event: MouseEvent
+    ) => void
+  ) {
+    this.annotationCallback = callback;
+  }
+
+  /**
+   * 创建注释
+   */
+  public createAnnotation(
+    object: THREE.Object3D,
+    position: THREE.Vector3,
+    config: any
+  ): string | undefined {
+    if (!this.annotationManager) {
+      console.warn("AnnotationManager not initialized");
+      return undefined;
+    }
+    return this.annotationManager.createAnnotation(object, position, config);
+  }
+
+  /**
+   * 更新注释标签位置
+   */
+  public updateAnnotationLabels() {
+    if (this.annotationManager) {
+      this.annotationManager.updateAllLabels();
+    }
+  }
+
+  /**
+   * 删除注释
+   */
+  public removeAnnotation(id: string) {
+    if (this.annotationManager) {
+      this.annotationManager.removeAnnotation(id);
+    }
+  }
+
+  /**
+   * 清除所有注释
+   */
+  public clearAllAnnotations() {
+    if (this.annotationManager) {
+      this.annotationManager.clearAllAnnotations();
     }
   }
 
@@ -1927,7 +2330,10 @@ export default class Viewer3D {
   public updateProjectSettings(settings: SettingsType) {
     this.settings = settings;
 
-    const updateCameraSettings = (c: THREE.PerspectiveCamera | THREE.OrthographicCamera | undefined, cs: CameraSettings) => {
+    const updateCameraSettings = (
+      c: THREE.PerspectiveCamera | THREE.OrthographicCamera | undefined,
+      cs: CameraSettings
+    ) => {
       if (c && cs) {
         c.near = cs.near;
         c.far = cs.far;

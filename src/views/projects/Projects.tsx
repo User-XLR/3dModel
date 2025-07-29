@@ -19,12 +19,14 @@ export default class Projects extends Vue {
   async mounted() {
     if (Projects.sampleProjects.length === 0) {
       this.onLoading = true;
-      ProjectManager.getSampleProjects().then((projects: Project[]) => {
-        Projects.sampleProjects.push(...projects);
-        this.sampleProjects = Projects.sampleProjects;
-      }).finally(() => {
-        this.onLoading = false;
-      });
+      ProjectManager.getSampleProjects()
+        .then((projects: Project[]) => {
+          Projects.sampleProjects.push(...projects);
+          this.sampleProjects = Projects.sampleProjects;
+        })
+        .finally(() => {
+          this.onLoading = false;
+        });
     } else {
       this.sampleProjects = Projects.sampleProjects;
     }
@@ -47,15 +49,18 @@ export default class Projects extends Vue {
   async addProject(data: any) {
     const createData = new FormData();
     const projectKeys = ["projectName", "projectDescription"];
-    projectKeys.forEach(key => {
+    projectKeys.forEach((key) => {
       createData.append(key, data[key]);
     });
-    const res = await createProject(data.projectName, data.projectDescription) as any;
+    const res = (await createProject(
+      data.projectName,
+      data.projectDescription
+    )) as any;
     if (res && res.projectId) {
       const proj = {
         id: res.projectId,
         name: data.projectName,
-        models: []
+        models: [],
       };
       ProjectManager.addCustomProject(proj);
       this.customProjects = ProjectManager.customProjects;
@@ -74,18 +79,20 @@ export default class Projects extends Vue {
   }
 
   async deleteProject(proj: Project) {
-    proj.id && await deleteProject(proj.id);
+    proj.id && (await deleteProject(proj.id));
     proj.id && ProjectManager.deleteCustomProject(proj.id);
     this.customProjects = ProjectManager.customProjects;
   }
 
   protected render(): VNode {
-    const sampleProjectCards = this.sampleProjects.map(p => <ProjectCard project={p} class={styles.card} key={p.id}></ProjectCard>);
+    const sampleProjectCards = this.sampleProjects.map((p) => (
+      <ProjectCard project={p} class={styles.card} key={p.id}></ProjectCard>
+    ));
     return (
       <div ref="projects" class={styles.projects}>
         <el-card class={styles.cardsWrapper}>
           <div slot="header">
-            <span class='span'>Sample projects</span>
+            <span class="span">Sample projects</span>
           </div>
           {sampleProjectCards}
         </el-card>
