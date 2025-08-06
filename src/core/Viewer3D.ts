@@ -63,6 +63,10 @@ import store from "../store/index";
 import Viewer3DUtils, { Views } from "./utils/Viewer3DUtils";
 import { PmremUtils } from "./utils/PmremUtils";
 import AnnotationManager from "./annotation/AnnotationManager";
+import {
+  GeometryOptimizer,
+  OptimizationConfig,
+} from "./optimization/GeometryOptimizer";
 // eslint-disable-next-line
 const TWEEN = require("tween");
 const IFC = require("../../public/three/js/libs/ifc/IFCLoader.js");
@@ -126,6 +130,8 @@ export default class Viewer3D {
     event: MouseEvent
   ) => void;
 
+  private geometryOptimizer?: GeometryOptimizer;
+
   // RafHelper (requestAnimationFrame Helper) is used to improve render performance,
   // With this feature, it only renders when necessary, e.g. camera position changed, model loaded, etc.
   // We can disable this feature by assigning raf to undefined
@@ -162,6 +168,7 @@ export default class Viewer3D {
     this.initDatGui(); // should be initialized later than sky, ground grid, etc.
     this.initPostmate();
     this.initOthers();
+    this.initGeometryOptimizer();
   }
 
   private initScene() {
@@ -523,6 +530,129 @@ export default class Viewer3D {
     this.renderer.domElement.style.outlineWidth = "0";
   }
 
+  /**
+   * 初始化几何体优化器
+   */
+  private initGeometryOptimizer() {
+    if (!this.scene || !this.camera) {
+      console.warn("[Viewer3D] 无法初始化几何体优化器 - 场景或相机未初始化");
+      return;
+    }
+
+    // 根据设备能力配置优化参数
+    const deviceCapability = this.assessDeviceCapability();
+    const optimizationConfig: Partial<OptimizationConfig> =
+      this.getOptimizationConfig(deviceCapability);
+
+    this.geometryOptimizer = new GeometryOptimizer(
+      this.scene,
+      this.camera,
+      this.renderer,
+      optimizationConfig
+    );
+    console.log(
+      `[Viewer3D] 几何体优化器已初始化 (设备级别: ${deviceCapability})`
+    );
+  }
+
+  /**
+   * 评估设备能力
+   */
+  private assessDeviceCapability(): "high" | "medium" | "low" {
+    const canvas = this.renderer?.domElement;
+    if (!canvas) return "medium";
+
+    const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+    if (!gl) return "low";
+
+    // 检查内存
+    const memory = (performance as any).memory;
+    const memoryMB = memory ? memory.jsHeapSizeLimit / (1024 * 1024) : 1000;
+
+    // 检查CPU核心数
+    const cores = navigator.hardwareConcurrency || 4;
+
+    // 检查GPU信息
+    const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+    const renderer = debugInfo
+      ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+      : "";
+
+    // 简单的能力评估
+    if (
+      renderer.includes("RTX") ||
+      renderer.includes("GTX") ||
+      memoryMB > 2000 ||
+      cores >= 8
+    ) {
+      return "high";
+    } else if (memoryMB > 1000 || cores >= 4) {
+      return "medium";
+    } else {
+      return "low";
+    }
+  }
+
+  /**
+   * 根据设备能力获取优化配置
+   */
+  private getOptimizationConfig(
+    capability: "high" | "medium" | "low"
+  ): Partial<OptimizationConfig> {
+    const baseConfig: Partial<OptimizationConfig> = {
+      enableLOD: true,
+      enableSimplification: true,
+      enableFrustumCulling: true,
+      enableDistanceCulling: true,
+      lodLevels: 4,
+      lodDistances: [100, 200, 500, 1000],
+      simplificationRatio: 0.5,
+      cullingDistance: 5000,
+      textureOptimization: {
+        enableCompression: true,
+        enableResolutionScaling: true,
+        maxTextureSize: 1024,
+        enableTextureCache: true,
+        maxCacheSize: 256,
+        enableMipmaps: true,
+        lodTextureScaling: [1.0, 0.8, 0.6, 0.4],
+      },
+    };
+
+    switch (capability) {
+      case "high":
+        return {
+          ...baseConfig,
+          lodDistances: [200, 500, 1000, 2000],
+          simplificationRatio: 0.7,
+          cullingDistance: 8000,
+          textureOptimization: {
+            ...baseConfig.textureOptimization,
+            maxTextureSize: 2048,
+            maxCacheSize: 512,
+            lodTextureScaling: [1.0, 0.9, 0.8, 0.6],
+          },
+        };
+
+      case "low":
+        return {
+          ...baseConfig,
+          lodDistances: [50, 100, 200, 500],
+          simplificationRatio: 0.3,
+          cullingDistance: 3000,
+          textureOptimization: {
+            ...baseConfig.textureOptimization,
+            maxTextureSize: 512,
+            maxCacheSize: 128,
+            lodTextureScaling: [0.8, 0.6, 0.4, 0.2],
+          },
+        };
+
+      default: // medium
+        return baseConfig;
+    }
+  }
+
   sycnCameraPosition(
     src: THREE.PerspectiveCamera | THREE.OrthographicCamera,
     dest: THREE.PerspectiveCamera | THREE.OrthographicCamera
@@ -616,6 +746,12 @@ export default class Viewer3D {
       this.composerRenderEnabled = false;
     }
     this.frustrumCullingByModelBBox();
+
+    // 更新几何体优化器
+    if (this.geometryOptimizer) {
+      this.geometryOptimizer.update();
+    }
+
     this.stats && this.stats.update();
 
     // 更新注释标签位置
@@ -748,6 +884,12 @@ export default class Viewer3D {
     this.stats = undefined;
     this.raycaster = undefined;
     this.selectedObject = undefined;
+
+    // 清理几何体优化器
+    if (this.geometryOptimizer) {
+      this.geometryOptimizer.dispose();
+      this.geometryOptimizer = undefined;
+    }
     if (this.groundGrid) {
       this.groundGrid.geometry.dispose();
       (this.groundGrid.material as THREE.Material).dispose();
@@ -1378,6 +1520,13 @@ export default class Viewer3D {
       }
     });
     this.scene.add(object);
+
+    // 注册对象到几何体优化器
+    if (this.geometryOptimizer) {
+      this.geometryOptimizer.registerObject(object);
+      console.log(`[Viewer3D] 已将模型注册到几何体优化器: ${options.src}`);
+    }
+
     const bbox = new THREE.BoxHelper(object);
     bbox.visible = false;
     bbox.matrixAutoUpdate = matrixAutoUpdate;
@@ -1406,6 +1555,17 @@ export default class Viewer3D {
 
     if (options.edges) {
       ObjectUtils.addOutlines(object);
+    }
+
+    // 设置当前模型信息并加载批注
+    if (this.annotationManager) {
+      this.annotationManager.setCurrentModel(options.src);
+      // 延迟加载批注，确保模型完全加载完成
+      setTimeout(() => {
+        if (this.annotationManager) {
+          this.annotationManager.loadFromLocalStorage();
+        }
+      }, 100);
     }
 
     this.enableRender();
@@ -2548,5 +2708,36 @@ export default class Viewer3D {
     updateCameraSettings(this.perspectiveCamera, this.settings.camera);
     updateCameraSettings(this.orthoCamera, this.settings.camera);
     this.enableRender(10);
+  }
+
+  /**
+   * 获取几何体优化统计信息
+   */
+  public getGeometryOptimizationStats() {
+    if (this.geometryOptimizer) {
+      return this.geometryOptimizer.getStats();
+    }
+    return null;
+  }
+
+  /**
+   * 更新几何体优化配置
+   */
+  public updateGeometryOptimizationConfig(config: Partial<OptimizationConfig>) {
+    if (this.geometryOptimizer) {
+      this.geometryOptimizer.updateConfig(config);
+    }
+  }
+
+  /**
+   * 启用/禁用几何体优化
+   */
+  public setGeometryOptimizationEnabled(enabled: boolean) {
+    const config = {
+      enableLOD: enabled,
+      enableSimplification: enabled,
+      enableFrustumCulling: enabled,
+    };
+    this.updateGeometryOptimizationConfig(config);
   }
 }
